@@ -67,6 +67,9 @@ async function boot() {
   el('nextSlot').onclick = () => stepTimeline(1);
   el('gpClose').onclick = clearSelection;
   update(curIdx);
+  // Re-run label de-collision whenever the view changes (zoom changes disc spacing;
+  // pan/resize change which labels would run off the edge).
+  map0.on('zoomend moveend resize', () => { if (S) drawMarkers(curIdx); });
 }
 
 function loadThreshold(fallback) {
@@ -123,19 +126,98 @@ function addMarkers(map) {
   });
 }
 
+// ---- map label layout ----
+// Labels are placed dynamically each draw so they don't overlap each other, don't
+// sit on top of the wind discs, and never run off the map edge. The static dx/dy in
+// spots.js is no longer a fixed offset — only its sign is used as a side hint (dx<0
+// = prefer placing the label to the west, e.g. for spots near the right edge).
+const LABEL_H = 30, DISC_R = 21, GAP = 8, EDGE = 6;
+
+const labelWidth = (name, windLabel) => Math.max(118, name.length * 7.3 + windLabel.length * 7.5 + 32);
+
+function rectOverlap(a, b) {
+  const ox = Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x));
+  const oy = Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+  return ox * oy;
+}
+// Penalty (not true area) for a label rect overlapping a disc circle.
+function discPenalty(c, rect) {
+  const nx = Math.max(rect.x, Math.min(c.x, rect.x + rect.w));
+  const ny = Math.max(rect.y, Math.min(c.y, rect.y + rect.h));
+  const dx = c.x - nx, dy = c.y - ny, d2 = dx * dx + dy * dy;
+  return d2 < c.r * c.r ? (c.r * c.r - d2) : 0;
+}
+
+// Named label offsets relative to the disc centre, for the per-spot `place` hint.
+const DIRS = {
+  E:  w => ({ dx: DISC_R + GAP,        dy: -LABEL_H / 2 }),
+  W:  w => ({ dx: -(w + DISC_R + GAP), dy: -LABEL_H / 2 }),
+  N:  w => ({ dx: -w / 2,              dy: -(DISC_R + GAP + LABEL_H) }),
+  S:  w => ({ dx: -w / 2,              dy: DISC_R + GAP }),
+  NE: w => ({ dx: DISC_R + GAP,        dy: -(DISC_R + GAP + LABEL_H) }),
+  SE: w => ({ dx: DISC_R + GAP,        dy: DISC_R + GAP }),
+  NW: w => ({ dx: -(w + DISC_R + GAP), dy: -(DISC_R + GAP + LABEL_H) }),
+  SW: w => ({ dx: -(w + DISC_R + GAP), dy: DISC_R + GAP })
+};
+
+// Label placement: spots with an explicit `place` hint are pinned to that side; the
+// rest are placed greedily (left→right) to avoid discs and already-placed labels.
+function computeLabelPlacements(entries) {
+  const size = map.getSize(), cw = size.x, ch = size.y;
+  const discs = entries.map(e => ({ x: e.cx, y: e.cy, r: DISC_R }));
+  const placed = [], out = {};
+  const clampRect = (e, off) => ({
+    x: Math.max(EDGE, Math.min(cw - e.w - EDGE, e.cx + off.dx)),
+    y: Math.max(EDGE, Math.min(ch - LABEL_H - EDGE, e.cy + off.dy)),
+    w: e.w, h: LABEL_H
+  });
+  const record = (e, rect) => { placed.push(rect); out[e.i] = { dx: Math.round(rect.x - e.cx), dy: Math.round(rect.y - e.cy) }; };
+  const withNudge = (off, n) => (n ? { dx: off.dx + (n[0] || 0), dy: off.dy + (n[1] || 0) } : off);
+
+  // 1) Pinned labels (explicit direction hint, plus optional nudge) — reserve space first.
+  entries.filter(e => DIRS[e.place]).forEach(e => record(e, clampRect(e, withNudge(DIRS[e.place](e.w), e.nudge))));
+
+  // 2) Everything else avoids discs and already-placed labels.
+  const vSteps = [0, -(LABEL_H + 4), LABEL_H + 4, -2 * (LABEL_H + 4), 2 * (LABEL_H + 4)];
+  entries.filter(e => !DIRS[e.place]).sort((a, b) => a.cx - b.cx).forEach(e => {
+    const cands = [];
+    (e.prefersLeft ? ['W', 'E'] : ['E', 'W']).forEach(side => vSteps.forEach(vs => {
+      const dx = side === 'E' ? DISC_R + GAP : -(e.w + DISC_R + GAP);
+      cands.push({ dx, dy: -LABEL_H / 2 + vs });
+    }));
+    cands.push(DIRS.N(e.w), DIRS.S(e.w));
+    let best = null, bestCost = Infinity;
+    for (const c of cands) {
+      const rect = clampRect(e, c);
+      let cost = 0;
+      for (const d of discs) cost += discPenalty(d, rect) * 2;
+      for (const p of placed) cost += rectOverlap(rect, p) * 4;
+      if (cost < bestCost) { bestCost = cost; best = rect; }
+      if (cost === 0) break;
+    }
+    record(e, best);
+  });
+  return out;
+}
+
 function drawMarkers(i) {
-  markerObjs.forEach(({ s, m }) => {
-    const speed = r(windAt(s, i));
-    const gust = r(s.hourly.wind_gusts_10m[i]);
+  const entries = markerObjs.map(({ s }, idx) => {
+    const speed = r(windAt(s, i)), gust = r(s.hourly.wind_gusts_10m[i]);
+    const windLabel = `${speed} (${gust}) kt`;
+    const pt = map.latLngToContainerPoint([s.lat, s.lon]);
+    return { i: idx, s, speed, windLabel, w: labelWidth(s.name, windLabel), cx: pt.x, cy: pt.y, prefersLeft: s.dx < 0, place: s.place, nudge: s.nudge };
+  });
+  const place = computeLabelPlacements(entries);
+  entries.forEach(e => {
+    const { s } = e;
     const deg = s.hourly.wind_direction_10m[i];
     const active = s.name === selName ? ' active' : '';
-    const windLabel = `${speed} (${gust}) kt`;
-    const w = Math.max(118, s.name.length * 7.3 + windLabel.length * 7.5 + 32);
+    const pos = place[e.i];
     const html = `<div class="pin${active}">`
-      + `<div class="disc" style="background:${windColor(speed)}">${arrowToward(deg)}</div>`
-      + `<div class="plabel" style="left:${s.dx}px;top:${s.dy}px;width:${w}px"><span>${s.name}</span>`
-      + `<b style="margin-left:auto;color:${windColor(speed)}">${windLabel}</b></div></div>`;
-    m.setIcon(L.divIcon({ className: '', html, iconSize: [0, 0], iconAnchor: [0, 0] }));
+      + `<div class="disc" style="background:${windColor(e.speed)}">${arrowToward(deg)}</div>`
+      + `<div class="plabel" style="left:${pos.dx}px;top:${pos.dy}px;width:${e.w}px"><span>${s.name}</span>`
+      + `<b style="margin-left:auto;color:${windColor(e.speed)}">${e.windLabel}</b></div></div>`;
+    markerObjs[e.i].m.setIcon(L.divIcon({ className: '', html, iconSize: [0, 0], iconAnchor: [0, 0] }));
   });
 }
 

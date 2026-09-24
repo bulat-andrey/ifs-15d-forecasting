@@ -58,7 +58,7 @@ async function fetchForecast(runSec, availSec, intervalSec) {
       spots: spots.map((s, i) => {
         const d = arr[i] || {};
         return {
-          name: s.name, lat: s.lat, lon: s.lon, dx: s.dx, dy: s.dy, wg: s.wg,
+          name: s.name, lat: s.lat, lon: s.lon, dx: s.dx, dy: s.dy, place: s.place, nudge: s.nudge, wg: s.wg,
           grid_lat: d.latitude, grid_lon: d.longitude, elevation: d.elevation,
           hourly: d.hourly || null,
           daily: d.daily || null
@@ -137,7 +137,12 @@ const server = http.createServer((req, res) => {
   if (!fp.startsWith(PUBLIC_DIR)) { res.writeHead(403); return res.end('forbidden'); }
   fs.readFile(fp, (err, buf) => {
     if (err) { res.writeHead(404, { 'content-type': 'text/plain' }); return res.end('not found'); }
-    res.writeHead(200, { 'content-type': MIME[path.extname(fp)] || 'application/octet-stream' });
+    const ext = path.extname(fp);
+    const headers = { 'content-type': MIME[ext] || 'application/octet-stream' };
+    // HTML must always revalidate so new ?v= asset URLs are picked up; the versioned
+    // JS/CSS/assets are safe to cache long-term (their URL changes when they change).
+    headers['cache-control'] = ext === '.html' ? 'no-cache' : 'public, max-age=31536000';
+    res.writeHead(200, headers);
     res.end(buf);
   });
 });
