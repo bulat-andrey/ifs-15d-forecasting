@@ -1,0 +1,23 @@
+# Baltic Wind — Caddy reverse proxy with automatic HTTPS.
+# Replace kite.example.com with your domain (its A/AAAA record must point at this server).
+# Caddy fetches and renews a Let's Encrypt certificate automatically.
+
+kite.example.com {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8787
+
+	# Small static app; a short cache on the assets is fine. The API sends no-store itself.
+	@assets path *.css *.js *.svg *.png *.ico
+	header @assets Cache-Control "public, max-age=3600"
+
+	log {
+		output file /var/log/caddy/baltic-wind.log
+		format console
+	}
+}
+
+# Local / no-domain testing: `caddy run --config Caddyfile` then browse http://localhost
+# (uncomment the block below and comment the site block above).
+# :80 {
+# 	reverse_proxy 127.0.0.1:8787
+# }

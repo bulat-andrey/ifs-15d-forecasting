@@ -1,0 +1,30 @@
+[Unit]
+Description=Baltic Wind kite forecast (Node service)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Adjust User and WorkingDirectory to your deployment.
+User=baltic
+WorkingDirectory=/opt/baltic-wind
+ExecStart=/usr/bin/node src/server.js
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=PORT=8787
+# Optional overrides:
+# Environment=REFRESH_MIN=30
+# Environment=OPENMETEO_MODEL=ecmwf_ifs
+# Environment=CELL_SELECTION=sea
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=
+
+[Install]
+WantedBy=multi-user.target

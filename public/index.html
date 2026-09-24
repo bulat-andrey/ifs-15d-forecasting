@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sultans Radar — kite forecast</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="/styles.css?v=threshold-colors-20260924" />
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">Sultans <b>Radar</b></div>
+    <div class="time-now"><b id="timeLabel">—</b></div>
+    <div class="spot-summary" id="spotSummary" aria-live="polite" hidden>
+      <span class="spot-arrow" id="spotArrow">·</span>
+      <strong id="spotName">—</strong>
+      <b><span id="spotSpeed">–</span> kt</b>
+      <span>Dir <b id="spotDirText">–</b></span>
+      <span>Gusts <b id="spotGust">–</b></span>
+      <span>Temp <b id="spotTemp">–</b></span>
+      <span>Precip <b id="spotPrecip">–</b></span>
+      <span class="spot-kite" id="spotKite">–</span>
+      <a class="spot-wg" id="spotWg" target="_blank" rel="noopener noreferrer" aria-label="Open Windguru Pro forecast" title="Open Windguru Pro forecast"><img src="/windguru.jpg" alt="" /></a>
+    </div>
+    <span class="updated" id="updated">loading…</span>
+    <button class="control" id="modelBtn" title="Forecast model">ECMWF IFS 9 km</button>
+    <label class="threshold-control" title="Kiteable wind threshold">
+      <span>Threshold</span>
+      <select id="thresholdSelect" aria-label="Kiteable wind threshold">
+        <option value="10">10 kt</option>
+        <option value="12">12 kt</option>
+        <option value="14">14 kt</option>
+        <option value="16">16 kt</option>
+        <option value="18">18 kt</option>
+      </select>
+    </label>
+  </header>
+
+  <main class="map-shell">
+    <div id="map"></div>
+    <div class="loading" id="loading">Loading forecast…</div>
+    <div class="map-transport" aria-label="Timeline controls">
+      <button class="step" id="prevSlot" aria-label="Previous forecast period">‹</button>
+      <button class="play" id="play" aria-label="Play forecast">▶</button>
+      <button class="step" id="nextSlot" aria-label="Next forecast period">›</button>
+    </div>
+    <div class="map-legend" aria-label="Sustained wind legend in knots">
+      <span class="legend-title">Wind kt</span>
+      <span><i style="background:#73879c"></i><b id="leg0">&lt;12</b></span>
+      <span><i style="background:#25d88a"></i><b id="leg1">12</b></span>
+      <span><i style="background:#b7de36"></i><b id="leg2">18</b></span>
+      <span><i style="background:#f2bc35"></i><b id="leg3">25</b></span>
+      <span><i style="background:#ff713f"></i><b id="leg4">32</b></span>
+      <span><i style="background:#e83655"></i><b id="leg5">38</b></span>
+      <span><i style="background:#a855f7"></i><b id="leg6">45+</b></span>
+    </div>
+    <div class="map-attrib">Weather data by <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> (CC BY 4.0) · ECMWF IFS</div>
+
+    <section class="graph-panel" id="graphPanel" hidden>
+      <button class="gp-close" id="gpClose" aria-label="Close graph">✕</button>
+      <div class="gp-head">
+        <b id="gpName">—</b><span id="gpSub">15-day forecast · daylight shaded</span>
+        <span class="gp-legend">
+          <span><i style="background:var(--wind)"></i>wind</span>
+          <span><i style="background:var(--gust)"></i>gusts</span>
+          <span><i style="background:var(--precip)"></i>precip</span>
+        </span>
+      </div>
+      <div class="gp-dir" id="gpDir" aria-label="Wind direction forecast"></div>
+      <div id="graph"></div>
+    </section>
+  </main>
+
+  <footer class="timeline">
+    <div class="days" id="days" aria-label="Forecast timeline" tabindex="0"></div>
+  </footer>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/app.js?v=threshold-colors-20260924"></script>
+</body>
+</html>
