@@ -107,6 +107,7 @@ async function boot() {
   el('dirClose').onclick = closeDirectionSettings;
   el('dirSave').onclick = saveDirectionSettings;
   el('dirReset').onclick = resetDirectionSettings;
+  el('dirCopy').onclick = copyDirectionConfig;
   el('dirFrom').oninput = renderDirectionRoseFromInputs;
   el('dirTo').oninput = renderDirectionRoseFromInputs;
   dirRoseInvert = localStorage.getItem(DIR_INVERT_KEY) !== '0';
@@ -611,6 +612,27 @@ function resetDirectionSettings() {
   refreshAfterDirectionChange();
   const s = S.spots.find(x => x.name === selName);
   if (s) syncDirectionSettingsFields(s);
+}
+
+async function copyDirectionConfig() {
+  if (!selName) return;
+  const displayRanges = readDirectionInputs();
+  if (!displayRanges) return;
+  const ranges = storedRangesFromDisplayed(displayRanges);
+  const snippet = `goodFrom: ${JSON.stringify(ranges)}`;
+  try {
+    await navigator.clipboard.writeText(snippet);
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = snippet;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    ta.remove();
+  }
+  const btn = el('dirCopy');
+  btn.textContent = 'Copied';
+  setTimeout(() => { btn.textContent = 'Copy config'; }, 1000);
 }
 
 function selectSpot(name, showGraph = true) {
