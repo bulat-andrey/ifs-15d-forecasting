@@ -26,6 +26,8 @@ header { min-height: 72px; padding: 10px 22px; display: flex; align-items: cente
 .spot-summary[hidden] { display: none; }
 .spot-summary b, .spot-summary strong { color: var(--text); }
 .spot-arrow { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; color: #07111c; font-size: 16px; font-weight: 900; background: var(--safe); flex: 0 0 auto; }
+.spot-arrow.dir-good { color: #39eaa0; text-shadow: 0 1px 2px rgba(0,0,0,.95), 0 0 4px rgba(0,0,0,.8); }
+.spot-arrow.dir-bad { color: #ff9a8c; text-shadow: 0 1px 2px rgba(0,0,0,.95), 0 0 4px rgba(0,0,0,.8); }
 .spot-kite { border-radius: 7px; padding: 5px 8px; color: #032518; background: var(--safe); font-weight: 850; }
 .spot-kite.no { background: var(--calm); color: #0a1521; }
 .spot-wg { width: 30px; height: 30px; display: inline-grid; place-items: center; overflow: hidden; text-decoration: none; border: 1px solid var(--line); border-radius: 8px; padding: 0; color: var(--accent); font-weight: 750; background: #fff; flex: 0 0 auto; }
@@ -100,6 +102,9 @@ header { min-height: 72px; padding: 10px 22px; display: flex; align-items: cente
 
 .pin { position: absolute; }
 .pin .disc { position: absolute; width: 42px; height: 42px; border-radius: 50%; transform: translate(-50%, -50%); display: grid; place-items: center; color: #06101c; font-size: 21px; font-weight: 900; border: 2px solid rgba(255,255,255,.9); box-shadow: 0 3px 6px rgba(0,0,0,.5); cursor: pointer; }
+.pin .disc span { color: #06101c; }
+.pin .disc.dir-good span { color: #39eaa0; text-shadow: 0 1px 2px rgba(0,0,0,.95), 0 0 4px rgba(0,0,0,.8); }
+.pin .disc.dir-bad span { color: #ff9a8c; text-shadow: 0 1px 2px rgba(0,0,0,.95), 0 0 4px rgba(0,0,0,.8); }
 .pin .plabel { position: absolute; height: 30px; display: flex; align-items: center; gap: 6px; padding: 0 9px; background: rgba(6,16,28,.9); border: 1px solid #38546d; border-radius: 8px; white-space: nowrap; font-size: 13px; font-weight: 800; color: var(--text); pointer-events: none; }
 .pin.active .disc { border-color: #fff; box-shadow: 0 0 0 3px rgba(53,185,255,.55), 0 3px 6px rgba(0,0,0,.5); }
 .pin.active .plabel { border-color: #fff; }
