@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Sultans Radar — kite forecast</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="/styles.css?v=blend-seams2-20260924" />
+  <link rel="stylesheet" href="/styles.css?v=spot-table-20260925" />
 </head>
 <body>
 <div class="app">
@@ -56,20 +56,25 @@
       <span><i style="background:#a855f7"></i><b id="leg6">45+</b></span>
     </div>
     <div class="map-model" id="mapModel" hidden aria-live="polite"></div>
-    <div class="map-attrib">Weather data by <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> (CC BY 4.0) · ECMWF IFS</div>
+    <div class="map-attrib">Weather data by <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> (CC BY 4.0) · ICON/ECMWF</div>
 
     <section class="graph-panel" id="graphPanel" hidden>
       <button class="gp-close" id="gpClose" aria-label="Close graph">✕</button>
       <div class="gp-head">
         <b id="gpName">—</b><span id="gpSub">15-day forecast · daylight shaded</span>
+        <span class="view-toggle" aria-label="Spot detail view">
+          <button id="tableView" type="button" class="active">Table</button>
+          <button id="graphView" type="button">Graph</button>
+        </span>
         <span class="gp-legend">
           <span><i style="background:var(--wind)"></i>wind</span>
           <span><i style="background:var(--gust)"></i>gusts</span>
           <span><i style="background:var(--precip)"></i>precip</span>
         </span>
       </div>
-      <div class="gp-dir" id="gpDir" aria-label="Wind direction forecast"></div>
-      <div id="graph"></div>
+      <div id="spotTable" class="spot-table-wrap"></div>
+      <div class="gp-dir" id="gpDir" aria-label="Wind direction forecast" hidden></div>
+      <div id="graph" hidden></div>
     </section>
   </main>
 
@@ -78,6 +83,6 @@
   </footer>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="/app.js?v=blend-seams2-20260924"></script>
+<script src="/app.js?v=spot-table-20260925"></script>
 </body>
 </html>

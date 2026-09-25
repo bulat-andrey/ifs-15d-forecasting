@@ -37,6 +37,7 @@ let times = [];      // master hourly time array (ISO local, "YYYY-MM-DDTHH:MM")
 let t0 = 0;          // epoch of times[0], parsed as UTC for consistent indexing
 let curIdx = 0;
 let selName = null;
+let detailView = 'table';
 let threshold = 12;
 let map, markerObjs = [];
 let timelineIdxs = [];
@@ -85,6 +86,8 @@ async function boot() {
   el('prevSlot').onclick = () => stepTimeline(-1);
   el('nextSlot').onclick = () => stepTimeline(1);
   el('gpClose').onclick = clearSelection;
+  el('tableView').onclick = () => setDetailView('table');
+  el('graphView').onclick = () => setDetailView('graph');
   update(curIdx);
   // Re-run label de-collision whenever the view changes (zoom changes disc spacing;
   // pan/resize change which labels would run off the edge).
@@ -109,7 +112,7 @@ function setupThresholdControl() {
     updateLegend();
     buildTimeline();
     update(curIdx);
-    if (selName && !el('graphPanel').hidden) renderGraph(selName);
+    if (selName && !el('graphPanel').hidden) renderSpotDetail(selName, detailView);
   };
 }
 
@@ -349,6 +352,7 @@ function update(i, fromTimeline = false) {
     } else { mm.hidden = true; }
   }
   if (selName) fillSelected(selName, i);
+  if (selName && detailView === 'table' && !el('graphPanel').hidden) renderSpotTable(selName);
 }
 
 function onTimelineKey(e) {
@@ -397,7 +401,7 @@ function selectSpot(name, showGraph = true) {
   selName = name;
   fillSelected(name, curIdx);
   drawMarkers(curIdx);
-  if (showGraph) renderGraph(name); else el('graphPanel').hidden = true;
+  if (showGraph) renderSpotDetail(name, 'table'); else el('graphPanel').hidden = true;
 }
 
 function clearSelection() {
@@ -405,6 +409,76 @@ function clearSelection() {
   el('graphPanel').hidden = true;
   el('spotSummary').hidden = true;
   drawMarkers(curIdx);
+}
+
+function setDetailView(view) {
+  if (!selName) return;
+  renderSpotDetail(selName, view);
+}
+
+function renderSpotDetail(name, view = detailView) {
+  detailView = view;
+  el('tableView').classList.toggle('active', view === 'table');
+  el('graphView').classList.toggle('active', view === 'graph');
+  el('spotTable').hidden = view !== 'table';
+  el('gpDir').hidden = view !== 'graph';
+  el('graph').hidden = view !== 'graph';
+  if (view === 'graph') renderGraph(name);
+  else renderSpotTable(name);
+  el('graphPanel').hidden = false;
+}
+
+function dayName(iso) {
+  return new Date(iso.slice(0, 10) + 'T12:00:00Z').toLocaleDateString('en-GB', {
+    weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC'
+  });
+}
+
+function cellClass(i) {
+  return (i === curIdx ? ' active' : '') + (isDaylight(i) ? ' daylight' : ' night');
+}
+
+function renderSpotTable(name) {
+  const s = S.spots.find(x => x.name === name);
+  if (!s) return;
+  const h = s.hourly, n = times.length;
+  const modelLegend = (S.models && S.models.length ? S.models : []).map(m =>
+    `<span><i style="background:${modelColor(m.id)}"></i>${m.short}</span>`
+  ).join('');
+  const row = (label, cells, cls = '') => `<tr class="${cls}"><th>${label}</th>${cells}</tr>`;
+  let dayCells = '', timeCells = '', modelCells = '', windCells = '', gustCells = '', dirCells = '', tempCells = '', precipCells = '';
+  for (let i = 0; i < n; i++) {
+    const t = times[i], dayStart = i === 0 || times[i - 1].slice(0, 10) !== t.slice(0, 10);
+    const c = cellClass(i);
+    const wind = r(h.wind_speed_10m[i]), gust = r(h.wind_gusts_10m[i]), deg = h.wind_direction_10m[i];
+    const temp = r(h.temperature_2m[i]), precip = r(h.precipitation[i], 1);
+    const mid = h.model && h.model[i];
+    const title = `${formatHour(i)} · ${modelLabel(mid)}`;
+    dayCells += `<td class="${c}" title="${title}">${dayStart ? dayName(t) : ''}</td>`;
+    timeCells += `<td class="${c}" title="${title}">${t.slice(11, 16)}</td>`;
+    modelCells += `<td class="${c} model-cell" title="${modelLabel(mid)}"><i style="background:${modelColor(mid)}"></i>${modelShort(mid)}</td>`;
+    windCells += `<td class="${c} wind-cell" title="${title}" style="background:${windColor(wind)}">${wind}</td>`;
+    gustCells += `<td class="${c} gust-cell" title="${title}" style="background:${windColor(gust)}">${gust}</td>`;
+    dirCells += `<td class="${c}" title="${compassFrom(deg)} · ${Math.round(deg)}°">${arrowToward(deg)}</td>`;
+    tempCells += `<td class="${c} temp-cell">${temp}</td>`;
+    precipCells += `<td class="${c} precip-cell">${precip > 0 ? precip : '-'}</td>`;
+  }
+  el('gpName').textContent = s.name;
+  el('gpSub').innerHTML = `${modelLegend}<span style="opacity:.7"> · ${n} h · selected hour highlighted</span>`;
+  el('spotTable').innerHTML = `<table class="spot-table" aria-label="Hourly forecast table for ${s.name}">`
+    + row('Day', dayCells, 'day-row')
+    + row('Time', timeCells, 'time-row')
+    + row('Model', modelCells, 'model-row')
+    + row('Wind kt', windCells, 'wind-row')
+    + row('Gust kt', gustCells, 'gust-row')
+    + row('Dir', dirCells, 'dir-row')
+    + row('Temp °C', tempCells, 'temp-row')
+    + row('Rain mm', precipCells, 'precip-row')
+    + `</table>`;
+  requestAnimationFrame(() => {
+    const active = el('spotTable').querySelector('td.active');
+    if (active) active.scrollIntoView({ block: 'nearest', inline: 'center' });
+  });
 }
 
 // ---- spot-detail forecast graph (SVG) ----
