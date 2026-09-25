@@ -104,6 +104,8 @@ async function boot() {
   el('dirClose').onclick = closeDirectionSettings;
   el('dirSave').onclick = saveDirectionSettings;
   el('dirReset').onclick = resetDirectionSettings;
+  el('dirFrom').oninput = renderDirectionRoseFromInputs;
+  el('dirTo').oninput = renderDirectionRoseFromInputs;
   update(curIdx);
   // Re-run label de-collision whenever the view changes (zoom changes disc spacing;
   // pan/resize change which labels would run off the edge).
@@ -452,11 +454,13 @@ function openDirectionSettings() {
   if (!selName) return;
   const s = S.spots.find(x => x.name === selName);
   if (!s) return;
+  el('graphPanel').hidden = true;
   const [from = 0, to = 359] = (s.goodFrom && s.goodFrom[0]) || [];
   el('dirSpotName').textContent = s.name;
   el('dirSummary').textContent = `Suitable wind FROM: ${directionRangeText(s)}`;
   el('dirFrom').value = from;
   el('dirTo').value = to;
+  renderDirectionRose([[from, to]]);
   el('dirSettings').hidden = false;
 }
 
@@ -469,6 +473,46 @@ function readDirectionInputs() {
   const to = Math.max(0, Math.min(359, Math.round(Number(el('dirTo').value))));
   if (!Number.isFinite(from) || !Number.isFinite(to)) return null;
   return [[from, to]];
+}
+
+function rosePoint(deg, radius, cx = 150, cy = 150) {
+  const a = (normDeg(deg) - 90) * Math.PI / 180;
+  return [cx + Math.cos(a) * radius, cy + Math.sin(a) * radius];
+}
+
+function sectorPath(from, to, rOuter = 112, rInner = 78) {
+  let end = normDeg(to);
+  const start = normDeg(from);
+  if (end <= start) end += 360;
+  const large = end - start > 180 ? 1 : 0;
+  const [o1x, o1y] = rosePoint(start, rOuter), [o2x, o2y] = rosePoint(end, rOuter);
+  const [i2x, i2y] = rosePoint(end, rInner), [i1x, i1y] = rosePoint(start, rInner);
+  return `M ${o1x.toFixed(1)} ${o1y.toFixed(1)} A ${rOuter} ${rOuter} 0 ${large} 1 ${o2x.toFixed(1)} ${o2y.toFixed(1)} L ${i2x.toFixed(1)} ${i2y.toFixed(1)} A ${rInner} ${rInner} 0 ${large} 0 ${i1x.toFixed(1)} ${i1y.toFixed(1)} Z`;
+}
+
+function renderDirectionRoseFromInputs() {
+  const ranges = readDirectionInputs();
+  if (ranges) renderDirectionRose(ranges);
+}
+
+function renderDirectionRose(ranges) {
+  let ticks = '', labels = '';
+  for (let d = 0; d <= 350; d += 10) {
+    const major = d % 30 === 0;
+    const [x1, y1] = rosePoint(d, major ? 116 : 121);
+    const [x2, y2] = rosePoint(d, 128);
+    const [lx, ly] = rosePoint(d, major ? 98 : 104);
+    ticks += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" class="${major ? 'major' : ''}"/>`;
+    labels += `<text x="${lx.toFixed(1)}" y="${(ly + 3).toFixed(1)}" class="${major ? 'major' : ''}">${d}</text>`;
+  }
+  const sector = ranges.map(([a, b]) => `<path d="${sectorPath(a, b)}"/>`).join('');
+  el('dirRose').innerHTML = `<svg viewBox="0 0 300 300" role="img" aria-label="Suitable wind direction rose">`
+    + `<circle cx="150" cy="150" r="128" class="outer"/>`
+    + `<g class="sector">${sector}</g>`
+    + `<g class="ticks">${ticks}</g><g class="labels">${labels}</g>`
+    + `<text x="150" y="28" class="cardinal">N</text><text x="272" y="154" class="cardinal">E</text><text x="150" y="280" class="cardinal">S</text><text x="28" y="154" class="cardinal">W</text>`
+    + `<circle cx="150" cy="150" r="4" class="center"/>`
+    + `</svg>`;
 }
 
 function saveDirectionSettings() {
