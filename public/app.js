@@ -441,19 +441,20 @@ function cellClass(i) {
 function renderSpotTable(name) {
   const s = S.spots.find(x => x.name === name);
   if (!s) return;
-  const h = s.hourly, n = times.length;
+  const h = s.hourly, idxs = times.map((_, i) => i).filter(isDaylight), n = idxs.length;
   const modelLegend = (S.models && S.models.length ? S.models : []).map(m =>
     `<span><i style="background:${modelColor(m.id)}"></i>${m.short}</span>`
   ).join('');
   const row = (label, cells, cls = '') => `<tr class="${cls}"><th>${label}</th>${cells}</tr>`;
   let dayCells = '', timeCells = '', modelCells = '', windCells = '', gustCells = '', dirCells = '', tempCells = '', precipCells = '';
-  for (let i = 0; i < n; i++) {
-    const t = times[i], dayStart = i === 0 || times[i - 1].slice(0, 10) !== t.slice(0, 10);
-    const c = cellClass(i);
+  const activeIdx = idxs.find(idx => idx >= curIdx) ?? idxs[idxs.length - 1];
+  idxs.forEach((i, pos) => {
+    const t = times[i], prev = idxs[pos - 1], dayStart = prev == null || times[prev].slice(0, 10) !== t.slice(0, 10);
+    const c = (i === activeIdx ? ' active' : '') + ' daylight';
     const wind = r(h.wind_speed_10m[i]), gust = r(h.wind_gusts_10m[i]), deg = h.wind_direction_10m[i];
     const temp = r(h.temperature_2m[i]), precip = r(h.precipitation[i], 1);
     const mid = h.model && h.model[i];
-    const modelStart = !mid || i === 0 || h.model[i - 1] !== mid;
+    const modelStart = !mid || prev == null || h.model[prev] !== mid;
     const title = `${formatHour(i)} · ${modelLabel(mid)}`;
     dayCells += `<td class="${c}" title="${title}">${dayStart ? dayName(t) : ''}</td>`;
     timeCells += `<td class="${c}" title="${title}">${t.slice(11, 16)}</td>`;
@@ -463,9 +464,9 @@ function renderSpotTable(name) {
     dirCells += `<td class="${c}" title="${compassFrom(deg)} · ${Math.round(deg)}°">${arrowToward(deg)}</td>`;
     tempCells += `<td class="${c} temp-cell">${temp}</td>`;
     precipCells += `<td class="${c} precip-cell">${precip > 0 ? precip : '-'}</td>`;
-  }
+  });
   el('gpName').textContent = s.name;
-  el('gpSub').innerHTML = `${modelLegend}<span style="opacity:.7"> · ${n} h · selected hour highlighted</span>`;
+  el('gpSub').innerHTML = `${modelLegend}<span style="opacity:.7"> · ${n} daylight h · selected hour highlighted</span>`;
   el('spotTable').innerHTML = `<table class="spot-table" aria-label="Hourly forecast table for ${s.name}">`
     + row('Day', dayCells, 'day-row')
     + row('Time', timeCells, 'time-row')
