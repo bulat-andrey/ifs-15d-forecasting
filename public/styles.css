@@ -85,8 +85,8 @@ header { min-height: 72px; padding: 10px 22px; display: flex; align-items: cente
 .spot-table td.daylight { box-shadow: inset 0 1px 0 rgba(53,185,255,.08); }
 .spot-table td.active { outline: 2px solid #fff; outline-offset: -2px; position: relative; z-index: 1; }
 .spot-table .day-row td, .spot-table .time-row td { color: #e8f2fb; font-weight: 800; background: rgba(17,41,64,.9); }
-.spot-table .model-row td { color: var(--muted); font-size: 10px; padding-left: 1px; padding-right: 1px; overflow: visible; }
-.spot-table .model-cell i { display: block; width: calc(100% + 2px); height: 5px; margin: 0 -1px 2px; border-radius: 2px; }
+.spot-table .model-row td { height: 12px; padding: 0 1px; overflow: hidden; }
+.spot-table .model-cell i { display: block; width: calc(100% + 2px); height: 8px; margin: 2px -1px; border-radius: 2px; }
 .spot-table .wind-cell, .spot-table .gust-cell { color: #04121e; font-weight: 900; }
 .spot-table .dir-row td { font-size: 17px; color: #f4f8fb; }
 .spot-table .temp-cell { background: #f3cb44; color: #17202a; }

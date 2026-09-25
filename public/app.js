@@ -454,11 +454,10 @@ function renderSpotTable(name) {
     const wind = r(h.wind_speed_10m[i]), gust = r(h.wind_gusts_10m[i]), deg = h.wind_direction_10m[i];
     const temp = r(h.temperature_2m[i]), precip = r(h.precipitation[i], 1);
     const mid = h.model && h.model[i];
-    const modelStart = !mid || prev == null || h.model[prev] !== mid;
     const title = `${formatHour(i)} · ${modelLabel(mid)}`;
     dayCells += `<td class="${c}" title="${title}">${dayStart ? dayName(t) : ''}</td>`;
-    timeCells += `<td class="${c}" title="${title}">${t.slice(11, 16)}</td>`;
-    modelCells += `<td class="${c} model-cell" title="${modelLabel(mid)}"><i style="background:${modelColor(mid)}"></i>${modelStart ? modelShort(mid) : ''}</td>`;
+    timeCells += `<td class="${c}" title="${title}">${t.slice(11, 13)}</td>`;
+    modelCells += `<td class="${c} model-cell" title="${modelLabel(mid)}"><i style="background:${modelColor(mid)}"></i></td>`;
     windCells += `<td class="${c} wind-cell" title="${title}" style="background:${windColor(wind)}">${wind}</td>`;
     gustCells += `<td class="${c} gust-cell" title="${title}" style="background:${windColor(gust)}">${gust}</td>`;
     dirCells += `<td class="${c}" title="${compassFrom(deg)} · ${Math.round(deg)}°">${arrowToward(deg)}</td>`;
