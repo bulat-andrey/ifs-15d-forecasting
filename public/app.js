@@ -241,10 +241,11 @@ function drawMarkers(i) {
   entries.forEach(e => {
     const { s } = e;
     const deg = s.hourly.wind_direction_10m[i];
+    const dirClass = directionOk(s, deg) ? ' dir-good' : ' dir-bad';
     const active = s.name === selName ? ' active' : '';
     const pos = place[e.i];
     const html = `<div class="pin${active}">`
-      + `<div class="disc" style="background:${windColor(e.speed)}">${arrowToward(deg)}</div>`
+      + `<div class="disc${dirClass}" style="background:${windColor(e.speed)}"><span>${arrowToward(deg)}</span></div>`
       + `<div class="plabel" style="left:${pos.dx}px;top:${pos.dy}px;width:${e.w}px"><span>${s.name}</span>`
       + `<b style="margin-left:auto;color:${windColor(e.speed)}">${e.windLabel}</b></div></div>`;
     markerObjs[e.i].m.setIcon(L.divIcon({ className: '', html, iconSize: [0, 0], iconAnchor: [0, 0] }));
@@ -382,6 +383,8 @@ function fillSelected(name, i) {
   el('spotSpeed').textContent = speed;
   el('spotArrow').textContent = arrowToward(deg);
   el('spotArrow').style.background = windColor(speed);
+  el('spotArrow').classList.toggle('dir-good', directionOk(s, deg));
+  el('spotArrow').classList.toggle('dir-bad', !directionOk(s, deg));
   el('spotDirText').textContent = compassFrom(deg) + ' · ' + Math.round(deg) + '°';
   el('spotGust').textContent = gust + ' kt';
   el('spotTemp').textContent = temp + ' °C';
