@@ -60,11 +60,14 @@
     <div class="map-attrib">Weather data by <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> (CC BY 4.0) · ICON/ECMWF</div>
     <section class="dir-settings" id="dirSettings" hidden>
       <button class="dir-close" id="dirClose" type="button" aria-label="Close direction settings">✕</button>
-      <b id="dirSpotName">Spot</b>
+      <div class="dir-head" id="dirDragHandle"><b id="dirSpotName">Spot</b><span>drag</span></div>
       <span id="dirSummary">Suitable wind direction</span>
       <div class="dir-rose" id="dirRose" aria-label="Suitable wind direction compass"></div>
-      <label>From <input id="dirFrom" type="number" min="0" max="359" step="1" /></label>
-      <label>To <input id="dirTo" type="number" min="0" max="359" step="1" /></label>
+      <label class="dir-toggle"><input id="dirInvert" type="checkbox" checked /> Show where wind blows to</label>
+      <div class="dir-fields">
+        <label>From <input id="dirFrom" type="number" min="0" max="359" step="1" /></label>
+        <label>To <input id="dirTo" type="number" min="0" max="359" step="1" /></label>
+      </div>
       <div class="dir-actions">
         <button id="dirSave" type="button">Save</button>
         <button id="dirReset" type="button">Reset</button>
