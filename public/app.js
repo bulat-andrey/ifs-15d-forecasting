@@ -114,7 +114,8 @@ async function boot() {
   el('dirInvert').onchange = () => {
     dirRoseInvert = el('dirInvert').checked;
     localStorage.setItem(DIR_INVERT_KEY, dirRoseInvert ? '1' : '0');
-    renderDirectionRoseFromInputs();
+    const s = selName && S.spots.find(x => x.name === selName);
+    if (s) syncDirectionSettingsFields(s);
   };
   setupDirectionDrag();
   update(curIdx);
@@ -150,7 +151,15 @@ function applyDirectionOverrides() {
 
 function directionRangeText(spot) {
   const ranges = spot.goodFrom || [];
-  return ranges.length ? ranges.map(([a, b]) => `${a}° → ${b}°`).join(', ') : 'all directions';
+  return rangeText(ranges);
+}
+
+function rangeText(ranges) {
+  return ranges && ranges.length ? ranges.map(([a, b]) => `${a}° → ${b}°`).join(', ') : 'all directions';
+}
+
+function convertRanges(ranges) {
+  return ranges.map(([a, b]) => [normDeg(a + 180), normDeg(b + 180)]);
 }
 
 function refreshAfterDirectionChange() {
@@ -466,18 +475,14 @@ function openDirectionSettings() {
   const s = S.spots.find(x => x.name === selName);
   if (!s) return;
   el('graphPanel').hidden = true;
-  const [from = 0, to = 359] = (s.goodFrom && s.goodFrom[0]) || [];
   const panel = el('dirSettings');
   panel.style.left = '';
   panel.style.top = '';
   panel.style.right = '';
   panel.style.transform = '';
   el('dirSpotName').textContent = s.name;
-  updateDirectionSummary(s);
-  el('dirFrom').value = from;
-  el('dirTo').value = to;
   el('dirInvert').checked = dirRoseInvert;
-  renderDirectionRose([[from, to]]);
+  syncDirectionSettingsFields(s);
   panel.hidden = false;
 }
 
@@ -490,6 +495,24 @@ function readDirectionInputs() {
   const to = Math.max(0, Math.min(359, Math.round(Number(el('dirTo').value))));
   if (!Number.isFinite(from) || !Number.isFinite(to)) return null;
   return [[from, to]];
+}
+
+function displayedRangesForSpot(spot) {
+  const ranges = spot.goodFrom || [];
+  return dirRoseInvert ? convertRanges(ranges) : ranges;
+}
+
+function storedRangesFromDisplayed(ranges) {
+  return dirRoseInvert ? convertRanges(ranges) : ranges;
+}
+
+function syncDirectionSettingsFields(spot) {
+  const displayRanges = displayedRangesForSpot(spot);
+  const [from = 0, to = 359] = displayRanges[0] || [];
+  el('dirFrom').value = from;
+  el('dirTo').value = to;
+  renderDirectionRose(displayRanges);
+  updateDirectionSummary(spot, displayRanges);
 }
 
 function rosePoint(deg, radius, cx = 150, cy = 150) {
@@ -513,7 +536,6 @@ function renderDirectionRoseFromInputs() {
 }
 
 function renderDirectionRose(ranges) {
-  const displayRanges = dirRoseInvert ? ranges.map(([a, b]) => [normDeg(a + 180), normDeg(b + 180)]) : ranges;
   let ticks = '', labels = '';
   for (let d = 0; d <= 350; d += 10) {
     const major = d % 30 === 0;
@@ -523,7 +545,7 @@ function renderDirectionRose(ranges) {
     ticks += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" class="${major ? 'major' : ''}"/>`;
     labels += `<text x="${lx.toFixed(1)}" y="${(ly + 3).toFixed(1)}" class="${major ? 'major' : ''}">${d}</text>`;
   }
-  const sector = displayRanges.map(([a, b]) => `<path d="${sectorPath(a, b)}"/>`).join('');
+  const sector = ranges.map(([a, b]) => `<path d="${sectorPath(a, b)}"/>`).join('');
   el('dirRose').innerHTML = `<svg viewBox="0 0 300 300" role="img" aria-label="Suitable wind direction rose">`
     + `<circle cx="150" cy="150" r="128" class="outer"/>`
     + `<g class="sector">${sector}</g>`
@@ -533,12 +555,12 @@ function renderDirectionRose(ranges) {
     + `</svg>`;
   if (selName) {
     const s = S.spots.find(x => x.name === selName);
-    if (s) updateDirectionSummary(s);
+    if (s) updateDirectionSummary(s, ranges);
   }
 }
 
-function updateDirectionSummary(spot) {
-  el('dirSummary').textContent = `Input wind FROM: ${directionRangeText(spot)} · rose shows ${dirRoseInvert ? 'wind TO' : 'wind FROM'}`;
+function updateDirectionSummary(spot, displayRanges = displayedRangesForSpot(spot)) {
+  el('dirSummary').textContent = `${dirRoseInvert ? 'Editing wind TO' : 'Editing wind FROM'}: ${rangeText(displayRanges)} · saved FROM: ${directionRangeText(spot)}`;
 }
 
 function setupDirectionDrag() {
@@ -567,13 +589,18 @@ function setupDirectionDrag() {
 
 function saveDirectionSettings() {
   if (!selName) return;
-  const ranges = readDirectionInputs();
-  if (!ranges) return;
+  const displayRanges = readDirectionInputs();
+  if (!displayRanges) return;
+  const ranges = storedRangesFromDisplayed(displayRanges);
   dirOverrides[selName] = ranges;
   localStorage.setItem(DIR_OVERRIDES_KEY, JSON.stringify(dirOverrides));
   applyDirectionOverrides();
   refreshAfterDirectionChange();
-  openDirectionSettings();
+  const s = S.spots.find(x => x.name === selName);
+  if (s) syncDirectionSettingsFields(s);
+  const btn = el('dirSave');
+  btn.textContent = 'Saved';
+  setTimeout(() => { btn.textContent = 'Save'; }, 900);
 }
 
 function resetDirectionSettings() {
@@ -582,7 +609,8 @@ function resetDirectionSettings() {
   localStorage.setItem(DIR_OVERRIDES_KEY, JSON.stringify(dirOverrides));
   applyDirectionOverrides();
   refreshAfterDirectionChange();
-  openDirectionSettings();
+  const s = S.spots.find(x => x.name === selName);
+  if (s) syncDirectionSettingsFields(s);
 }
 
 function selectSpot(name, showGraph = true) {
