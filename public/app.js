@@ -39,6 +39,7 @@ const modelLabel = id => {
 
 const el = id => document.getElementById(id);
 const THRESHOLD_KEY = 'sultansradar.thresholdKt';
+const DIR_OVERRIDES_KEY = 'sultansradar.directionSectors';
 let S = null;        // forecast payload
 let times = [];      // master hourly time array (ISO local, "YYYY-MM-DDTHH:MM")
 let t0 = 0;          // epoch of times[0], parsed as UTC for consistent indexing
@@ -46,6 +47,7 @@ let curIdx = 0;
 let selName = null;
 let detailView = 'table';
 let threshold = 12;
+let dirOverrides = {};
 let map, markerObjs = [];
 let timelineIdxs = [];
 
@@ -64,6 +66,9 @@ async function boot() {
     el('loading').textContent = S.stale ? 'Forecast not fetched yet — retry shortly.' : 'No forecast data.';
     return;
   }
+  S.spots.forEach(s => { s.defaultGoodFrom = JSON.parse(JSON.stringify(s.goodFrom || [])); });
+  dirOverrides = loadDirectionOverrides();
+  applyDirectionOverrides();
   threshold = loadThreshold(S.threshold_kt || 12);
   times = S.spots[0].hourly.time;
   t0 = Date.parse(times[0] + ':00Z');
@@ -95,6 +100,10 @@ async function boot() {
   el('gpClose').onclick = clearSelection;
   el('tableView').onclick = () => setDetailView('table');
   el('graphView').onclick = () => setDetailView('graph');
+  el('spotSettings').onclick = openDirectionSettings;
+  el('dirClose').onclick = closeDirectionSettings;
+  el('dirSave').onclick = saveDirectionSettings;
+  el('dirReset').onclick = resetDirectionSettings;
   update(curIdx);
   // Re-run label de-collision whenever the view changes (zoom changes disc spacing;
   // pan/resize change which labels would run off the edge).
@@ -104,6 +113,37 @@ async function boot() {
 function loadThreshold(fallback) {
   const saved = Number(localStorage.getItem(THRESHOLD_KEY));
   return Number.isFinite(saved) && saved > 0 ? saved : fallback;
+}
+
+function loadDirectionOverrides() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(DIR_OVERRIDES_KEY) || '{}');
+    return raw && typeof raw === 'object' ? raw : {};
+  } catch { return {}; }
+}
+
+function validRanges(ranges) {
+  return Array.isArray(ranges) && ranges.every(r =>
+    Array.isArray(r) && r.length === 2 && r.every(v => Number.isFinite(Number(v)) && Number(v) >= 0 && Number(v) <= 359)
+  );
+}
+
+function applyDirectionOverrides() {
+  S.spots.forEach(s => {
+    if (validRanges(dirOverrides[s.name])) s.goodFrom = dirOverrides[s.name].map(([a, b]) => [Number(a), Number(b)]);
+    else s.goodFrom = JSON.parse(JSON.stringify(s.defaultGoodFrom || []));
+  });
+}
+
+function directionRangeText(spot) {
+  const ranges = spot.goodFrom || [];
+  return ranges.length ? ranges.map(([a, b]) => `${a}° → ${b}°`).join(', ') : 'all directions';
+}
+
+function refreshAfterDirectionChange() {
+  buildTimeline();
+  update(curIdx);
+  if (selName && !el('graphPanel').hidden) renderSpotDetail(selName, detailView);
 }
 
 function setupThresholdControl() {
@@ -408,6 +448,49 @@ function fillSelected(name, i) {
   el('spotSummary').hidden = false;
 }
 
+function openDirectionSettings() {
+  if (!selName) return;
+  const s = S.spots.find(x => x.name === selName);
+  if (!s) return;
+  const [from = 0, to = 359] = (s.goodFrom && s.goodFrom[0]) || [];
+  el('dirSpotName').textContent = s.name;
+  el('dirSummary').textContent = `Suitable wind FROM: ${directionRangeText(s)}`;
+  el('dirFrom').value = from;
+  el('dirTo').value = to;
+  el('dirSettings').hidden = false;
+}
+
+function closeDirectionSettings() {
+  el('dirSettings').hidden = true;
+}
+
+function readDirectionInputs() {
+  const from = Math.max(0, Math.min(359, Math.round(Number(el('dirFrom').value))));
+  const to = Math.max(0, Math.min(359, Math.round(Number(el('dirTo').value))));
+  if (!Number.isFinite(from) || !Number.isFinite(to)) return null;
+  return [[from, to]];
+}
+
+function saveDirectionSettings() {
+  if (!selName) return;
+  const ranges = readDirectionInputs();
+  if (!ranges) return;
+  dirOverrides[selName] = ranges;
+  localStorage.setItem(DIR_OVERRIDES_KEY, JSON.stringify(dirOverrides));
+  applyDirectionOverrides();
+  refreshAfterDirectionChange();
+  openDirectionSettings();
+}
+
+function resetDirectionSettings() {
+  if (!selName) return;
+  delete dirOverrides[selName];
+  localStorage.setItem(DIR_OVERRIDES_KEY, JSON.stringify(dirOverrides));
+  applyDirectionOverrides();
+  refreshAfterDirectionChange();
+  openDirectionSettings();
+}
+
 function selectSpot(name, showGraph = true) {
   selName = name;
   fillSelected(name, curIdx);
@@ -419,6 +502,7 @@ function clearSelection() {
   selName = null;
   el('graphPanel').hidden = true;
   el('spotSummary').hidden = true;
+  closeDirectionSettings();
   drawMarkers(curIdx);
 }
 
