@@ -11,6 +11,26 @@ module.exports = {
   TIMEZONE: process.env.TIMEZONE || 'Europe/Warsaw',
   FORECAST_DAYS: Number(process.env.FORECAST_DAYS || 15),
 
+  // --- Seamless multi-model blend ---
+  // Ordered finest → coarsest. For each spot and each hour we pick the best model by
+  // lead time (hours from now): ICON-D2 near-term, ICON-EU mid-range, ECMWF long-range,
+  // with a linear crossfade of CROSSFADE_H hours centred on each boundary so values
+  // don't jump at the seams. Each model is fetched independently and run-aligned:
+  //   - id:        Open-Meteo `models=` parameter
+  //   - meta:      path segment for the free metadata endpoint (differs from `id`!)
+  //   - days:      forecast_days requested (trimmed to what the model is used for → lower call weight)
+  //   - useUntilH: preferred up to this lead time (hours); the last model is the catch-all
+  // `days` is trimmed to just past each model's seam so the crossfade has data on BOTH
+  // sides of the boundary (the finer model overlaps ~1 day into the next model's range).
+  // Seams (useUntilH) are grid hours from local midnight, matching calendar horizons:
+  // 0–48 h = today+tomorrow (D2), 48–120 h = days 2–4 (EU), 120 h+ = long range (ECMWF).
+  MODELS: [
+    { id: 'icon_d2',   meta: 'dwd_icon_d2', label: 'ICON-D2 2.2 km', shortLabel: 'ICON-D2', days: 3,  useUntilH: 48 },
+    { id: 'icon_eu',   meta: 'dwd_icon_eu', label: 'ICON-EU 7 km',   shortLabel: 'ICON-EU', days: 6,  useUntilH: 120 },
+    { id: process.env.OPENMETEO_MODEL || 'ecmwf_ifs', meta: 'ecmwf_ifs', label: 'ECMWF IFS 9 km', shortLabel: 'ECMWF', days: Number(process.env.FORECAST_DAYS || 15), useUntilH: Infinity }
+  ],
+  CROSSFADE_H: Number(process.env.CROSSFADE_H || 6), // width of the linear blend window at each model seam
+
   // Kiteable sustained-wind threshold, in knots.
   KITE_THRESHOLD_KT: Number(process.env.KITE_THRESHOLD_KT || 12),
 

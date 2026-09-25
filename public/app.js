@@ -15,6 +15,21 @@ const arrowToward = deg => ARROWS[Math.round(((deg + 180) % 360) / 45) % 8];
 const compassFrom = deg => COMPASS[Math.round(deg / 45) % 8];
 const r = (v, d = 0) => (v == null ? null : Math.round(v * 10 ** d) / 10 ** d);
 
+// Blend model provenance → colour/short-label for the graph band + legend.
+const MODEL_META = {
+  icon_d2: { short: 'ICON-D2', color: '#35b9ff' },
+  icon_eu: { short: 'ICON-EU', color: '#b7de36' },
+  ecmwf_ifs: { short: 'ECMWF', color: '#a855f7' },
+  ecmwf_ifs025: { short: 'ECMWF', color: '#a855f7' }
+};
+const modelShort = id => (MODEL_META[id] && MODEL_META[id].short) || id || '—';
+const modelColor = id => (MODEL_META[id] && MODEL_META[id].color) || '#94a9bd';
+// Full label prefers the server's per-model label (e.g. "ICON-D2 2.2 km"), falls back to short.
+const modelLabel = id => {
+  const m = S && S.models && S.models.find(x => x.id === id);
+  return (m && m.label) || modelShort(id);
+};
+
 const el = id => document.getElementById(id);
 const THRESHOLD_KEY = 'sultansradar.thresholdKt';
 let S = null;        // forecast payload
@@ -54,6 +69,10 @@ async function boot() {
   el('updated').textContent = (S.stale ? '⚠ stale · ' : '') + [init, updated, next].filter(Boolean).join(' · ');
   el('updated').title = `Our server fetched this forecast: ${fetched}`;
   if (S.stale) el('updated').classList.add('stale');
+  if (S.blend && S.blend.length) {
+    el('modelBtn').textContent = S.blend.join(' → ');
+    el('modelBtn').title = 'Seamless blend — best model per lead time: ' + S.blend.join(' → ');
+  }
   setupThresholdControl();
 
   addMarkers(map0);
@@ -319,6 +338,16 @@ function update(i, fromTimeline = false) {
     if (!fromTimeline) activeCell.scrollIntoView({ block: 'nearest', inline: 'center' });
   }
   drawMarkers(i);
+  // Map model badge: which blend model the currently shown hour comes from (same for all spots).
+  const mm = el('mapModel');
+  if (mm) {
+    const prov = S.spots[0].hourly.model, mid = prov ? prov[i] : null;
+    if (mid) {
+      mm.hidden = false;
+      mm.innerHTML = `<i style="background:${modelColor(mid)}"></i><span>shown&nbsp;hour</span><b>${modelLabel(mid)}</b>`;
+      mm.title = `The wind shown on the map for this time is from ${modelShort(mid)}`;
+    } else { mm.hidden = true; }
+  }
   if (selName) fillSelected(selName, i);
 }
 
@@ -417,8 +446,27 @@ function renderGraph(name) {
   let axis = '';
   [0, 10, 20, 30, 40].filter(v => v <= wMax).forEach(v => { axis += `<text x="4" y="${(yW(v) + 3).toFixed(1)}" fill="#5f7d88" font-size="9">${v}</text>`; });
 
+  // model provenance band along the very top + a faint seam divider where models hand off
+  let band = '', seams = '';
+  const mv = h.model;
+  if (mv && mv.length) {
+    let start = 0;
+    for (let i = 1; i <= N; i++) {
+      if (i === N || mv[i] !== mv[start]) {
+        const id = mv[start];
+        if (id) band += `<rect x="${x(start).toFixed(1)}" y="2.5" width="${Math.max(0, x(i - 1) - x(start)).toFixed(1)}" height="5" fill="${modelColor(id)}" opacity=".92"><title>${modelShort(id)}</title></rect>`;
+        if (i < N) { // seam between mv[i-1] and mv[i]
+          const xi = x(i).toFixed(1);
+          seams += `<line x1="${xi}" y1="${padT}" x2="${xi}" y2="${H - padB}" stroke="${modelColor(mv[i])}" stroke-width="1" stroke-dasharray="3 4" opacity=".5"/>`
+            + `<text x="${(x(i) + 4).toFixed(1)}" y="${padT + 16}" fill="${modelColor(mv[i])}" font-size="9" opacity=".85">${modelShort(mv[i])}</text>`;
+        }
+        start = i;
+      }
+    }
+  }
+
   const svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Forecast graph for ${s.name}">`
-    + shade + ticks + bars + thr + axis
+    + shade + ticks + seams + bars + thr + axis + band
     + `<path d="${path(gust, yW)}" fill="none" stroke="var(--gust)" stroke-width="1.6"/>`
     + `<path d="${path(wind, yW)}" fill="none" stroke="var(--wind)" stroke-width="2"/>`
     + `</svg>`;
@@ -428,7 +476,11 @@ function renderGraph(name) {
     : ''
   ).join('');
   el('gpName').textContent = s.name;
-  el('gpSub').textContent = `${S.model === 'ecmwf_ifs' ? 'ECMWF IFS 9 km' : S.model} · ${times.length} h · daylight shaded · dashed = ${threshold} kt`;
+  const legendModels = (S.models && S.models.length) ? S.models : (S.blend || []).map(sh => ({ short: sh }));
+  const legend = legendModels
+    .map(m => `<span style="white-space:nowrap"><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${modelColor(m.id)};margin-right:4px;vertical-align:middle"></i>${m.short || m.id}</span>`)
+    .join('<span style="opacity:.45;margin:0 6px">→</span>');
+  el('gpSub').innerHTML = (legend || 'blended') + ` · ${times.length} h · daylight shaded · dashed = ${threshold} kt`;
   el('graphPanel').hidden = false;
 }
 
