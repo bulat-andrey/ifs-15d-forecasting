@@ -14,6 +14,13 @@ const COMPASS = ['N','NE','E','SE','S','SW','W','NW'];
 const arrowToward = deg => ARROWS[Math.round(((deg + 180) % 360) / 45) % 8];
 const compassFrom = deg => COMPASS[Math.round(deg / 45) % 8];
 const r = (v, d = 0) => (v == null ? null : Math.round(v * 10 ** d) / 10 ** d);
+const normDeg = deg => ((deg % 360) + 360) % 360;
+const inRange = (deg, a, b) => {
+  const d = normDeg(deg), from = normDeg(a), to = normDeg(b);
+  return from <= to ? d >= from && d <= to : d >= from || d <= to;
+};
+const directionOk = (spot, deg) => deg != null && (!spot.goodFrom || spot.goodFrom.some(([a, b]) => inRange(deg, a, b)));
+const directionStatus = (spot, deg) => directionOk(spot, deg) ? 'suitable direction' : 'offshore / cross-offshore';
 
 // Blend model provenance → colour/short-label for the graph band + legend.
 const MODEL_META = {
@@ -130,7 +137,8 @@ function initMap() {
 }
 
 const windAt = (spot, i) => spot.hourly ? (spot.hourly.wind_speed_10m[i] ?? 0) : 0;
-const maxWindAt = i => S.spots.reduce((m, s) => Math.max(m, windAt(s, i)), 0);
+const usableWindAt = (spot, i) => directionOk(spot, spot.hourly.wind_direction_10m[i]) ? windAt(spot, i) : 0;
+const maxUsableWindAt = i => S.spots.reduce((m, s) => Math.max(m, usableWindAt(s, i)), 0);
 
 function nowIndex() {
   // current Warsaw wall-clock, matched against the local ISO time grid
@@ -267,7 +275,7 @@ function buildTimeline() {
   daily.time.forEach((date, d) => {
     const idxs = times.map((t, i) => t.startsWith(date) && isDaylight(i) ? i : -1).filter(i => i >= 0);
     timelineIdxs.push(...idxs);
-    const daylightWinds = idxs.map(maxWindAt);
+    const daylightWinds = idxs.map(maxUsableWindAt);
     const hi = daylightWinds.length ? Math.round(Math.max(...daylightWinds)) : 0;
     const lo = daylightWinds.length ? Math.round(Math.min(...daylightWinds)) : 0;
     const day = document.createElement('div');
@@ -279,7 +287,7 @@ function buildTimeline() {
     bar.className = 'daywind';
     bar.style.gridTemplateColumns = `repeat(${Math.max(1, idxs.length)}, minmax(6px, 1fr))`;
     idxs.forEach(i => {
-      const speed = Math.round(maxWindAt(i));
+      const speed = Math.round(maxUsableWindAt(i));
       const cell = document.createElement('button');
       cell.type = 'button';
       cell.className = 'hourcell';
@@ -378,10 +386,10 @@ function fillSelected(name, i) {
   el('spotGust').textContent = gust + ' kt';
   el('spotTemp').textContent = temp + ' °C';
   el('spotPrecip').textContent = precip + ' mm';
-  const kite = el('spotKite'), day = isDaylight(i);
-  const ok = speed >= threshold && day;
+  const kite = el('spotKite'), day = isDaylight(i), dirOk = directionOk(s, deg);
+  const ok = speed >= threshold && day && dirOk;
   kite.classList.toggle('no', !ok);
-  kite.textContent = ok ? 'Kiteable now' : speed < threshold ? `Below ${threshold} kt` : 'Dark — not daylight';
+  kite.textContent = ok ? 'Kiteable now' : speed < threshold ? `Below ${threshold} kt` : !day ? 'Dark — not daylight' : 'Offshore direction';
   const wg = el('spotWg');
   if (s.wg) {
     wg.hidden = false; wg.removeAttribute('aria-disabled');
@@ -463,12 +471,13 @@ function renderSpotTable(name) {
       const temp = r(h.temperature_2m[i]), precip = r(h.precipitation[i], 1);
       const mid = h.model && h.model[i];
       const title = `${formatHour(i)} · ${modelLabel(mid)}`;
+      const dirOk = directionOk(s, deg);
       dayCells += `<td class="${c}" title="${title}">${dayStart ? dayName(t) : ''}</td>`;
       timeCells += `<td class="${c}" title="${title}">${t.slice(11, 13)}</td>`;
       modelCells += `<td class="${c} model-cell" title="${modelLabel(mid)}"><i style="background:${modelColor(mid)}"></i></td>`;
       windCells += `<td class="${c} wind-cell" title="${title}" style="background:${windColor(wind)}">${wind}</td>`;
       gustCells += `<td class="${c} gust-cell" title="${title}" style="background:${windColor(gust)}">${gust}</td>`;
-      dirCells += `<td class="${c}" title="${compassFrom(deg)} · ${Math.round(deg)}°">${arrowToward(deg)}</td>`;
+      dirCells += `<td class="${c} ${dirOk ? 'dir-good' : 'dir-bad'}" title="${compassFrom(deg)} · ${Math.round(deg)}° · ${directionStatus(s, deg)}">${arrowToward(deg)}</td>`;
       tempCells += `<td class="${c} temp-cell">${temp}</td>`;
       precipCells += `<td class="${c} precip-cell">${precip > 0 ? precip : '-'}</td>`;
     });

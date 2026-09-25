@@ -91,6 +91,8 @@ header { min-height: 72px; padding: 10px 22px; display: flex; align-items: cente
 .spot-table .model-cell i { display: block; width: calc(100% + 2px); height: 8px; margin: 2px -1px; border-radius: 2px; }
 .spot-table .wind-cell, .spot-table .gust-cell { color: #04121e; font-weight: 900; }
 .spot-table .dir-row td { font-size: 17px; color: #f4f8fb; }
+.spot-table .dir-row td.dir-good { color: #39eaa0; background: rgba(37,216,138,.14); }
+.spot-table .dir-row td.dir-bad { color: #ff9a8c; background: rgba(232,54,85,.2); }
 .spot-table .temp-cell { background: #f3cb44; color: #17202a; }
 .spot-table .precip-cell { color: #ffb08c; }
 
