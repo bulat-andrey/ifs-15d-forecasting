@@ -441,41 +441,51 @@ function cellClass(i) {
 function renderSpotTable(name) {
   const s = S.spots.find(x => x.name === name);
   if (!s) return;
-  const h = s.hourly, idxs = times.map((_, i) => i).filter(isDaylight), n = idxs.length;
+  const h = s.hourly;
+  const dayGroups = S.spots[0].daily.time.map(date => ({
+    date,
+    idxs: times.map((t, i) => t.startsWith(date) && isDaylight(i) ? i : -1).filter(i => i >= 0)
+  })).filter(g => g.idxs.length);
+  const idxs = dayGroups.flatMap(g => g.idxs), n = idxs.length;
   const modelLegend = (S.models && S.models.length ? S.models : []).map(m =>
     `<span><i style="background:${modelColor(m.id)}"></i>${m.short}</span>`
   ).join('');
   const row = (label, cells, cls = '') => `<tr class="${cls}"><th>${label}</th>${cells}</tr>`;
-  let dayCells = '', timeCells = '', modelCells = '', windCells = '', gustCells = '', dirCells = '', tempCells = '', precipCells = '';
   const activeIdx = idxs.find(idx => idx >= curIdx) ?? idxs[idxs.length - 1];
-  idxs.forEach((i, pos) => {
-    const t = times[i], prev = idxs[pos - 1], dayStart = prev == null || times[prev].slice(0, 10) !== t.slice(0, 10);
-    const c = (i === activeIdx ? ' active' : '') + ' daylight';
-    const wind = r(h.wind_speed_10m[i]), gust = r(h.wind_gusts_10m[i]), deg = h.wind_direction_10m[i];
-    const temp = r(h.temperature_2m[i]), precip = r(h.precipitation[i], 1);
-    const mid = h.model && h.model[i];
-    const title = `${formatHour(i)} · ${modelLabel(mid)}`;
-    dayCells += `<td class="${c}" title="${title}">${dayStart ? dayName(t) : ''}</td>`;
-    timeCells += `<td class="${c}" title="${title}">${t.slice(11, 13)}</td>`;
-    modelCells += `<td class="${c} model-cell" title="${modelLabel(mid)}"><i style="background:${modelColor(mid)}"></i></td>`;
-    windCells += `<td class="${c} wind-cell" title="${title}" style="background:${windColor(wind)}">${wind}</td>`;
-    gustCells += `<td class="${c} gust-cell" title="${title}" style="background:${windColor(gust)}">${gust}</td>`;
-    dirCells += `<td class="${c}" title="${compassFrom(deg)} · ${Math.round(deg)}°">${arrowToward(deg)}</td>`;
-    tempCells += `<td class="${c} temp-cell">${temp}</td>`;
-    precipCells += `<td class="${c} precip-cell">${precip > 0 ? precip : '-'}</td>`;
-  });
+  const blockHtml = [];
+  for (let d = 0; d < dayGroups.length; d += 2) {
+    const blockIdxs = dayGroups.slice(d, d + 2).flatMap(g => g.idxs);
+    let dayCells = '', timeCells = '', modelCells = '', windCells = '', gustCells = '', dirCells = '', tempCells = '', precipCells = '';
+    blockIdxs.forEach((i, pos) => {
+      const t = times[i], prev = blockIdxs[pos - 1], dayStart = prev == null || times[prev].slice(0, 10) !== t.slice(0, 10);
+      const c = (i === activeIdx ? ' active' : '') + ' daylight';
+      const wind = r(h.wind_speed_10m[i]), gust = r(h.wind_gusts_10m[i]), deg = h.wind_direction_10m[i];
+      const temp = r(h.temperature_2m[i]), precip = r(h.precipitation[i], 1);
+      const mid = h.model && h.model[i];
+      const title = `${formatHour(i)} · ${modelLabel(mid)}`;
+      dayCells += `<td class="${c}" title="${title}">${dayStart ? dayName(t) : ''}</td>`;
+      timeCells += `<td class="${c}" title="${title}">${t.slice(11, 13)}</td>`;
+      modelCells += `<td class="${c} model-cell" title="${modelLabel(mid)}"><i style="background:${modelColor(mid)}"></i></td>`;
+      windCells += `<td class="${c} wind-cell" title="${title}" style="background:${windColor(wind)}">${wind}</td>`;
+      gustCells += `<td class="${c} gust-cell" title="${title}" style="background:${windColor(gust)}">${gust}</td>`;
+      dirCells += `<td class="${c}" title="${compassFrom(deg)} · ${Math.round(deg)}°">${arrowToward(deg)}</td>`;
+      tempCells += `<td class="${c} temp-cell">${temp}</td>`;
+      precipCells += `<td class="${c} precip-cell">${precip > 0 ? precip : '-'}</td>`;
+    });
+    blockHtml.push(`<table class="spot-table" aria-label="Hourly forecast table for ${s.name}">`
+      + row('Day', dayCells, 'day-row')
+      + row('Time', timeCells, 'time-row')
+      + row('Model', modelCells, 'model-row')
+      + row('Wind kt', windCells, 'wind-row')
+      + row('Gust kt', gustCells, 'gust-row')
+      + row('Dir', dirCells, 'dir-row')
+      + row('Temp °C', tempCells, 'temp-row')
+      + row('Rain mm', precipCells, 'precip-row')
+      + `</table>`);
+  }
   el('gpName').textContent = s.name;
-  el('gpSub').innerHTML = `${modelLegend}<span style="opacity:.7"> · ${n} daylight h · selected hour highlighted</span>`;
-  el('spotTable').innerHTML = `<table class="spot-table" aria-label="Hourly forecast table for ${s.name}">`
-    + row('Day', dayCells, 'day-row')
-    + row('Time', timeCells, 'time-row')
-    + row('Model', modelCells, 'model-row')
-    + row('Wind kt', windCells, 'wind-row')
-    + row('Gust kt', gustCells, 'gust-row')
-    + row('Dir', dirCells, 'dir-row')
-    + row('Temp °C', tempCells, 'temp-row')
-    + row('Rain mm', precipCells, 'precip-row')
-    + `</table>`;
+  el('gpSub').innerHTML = `${modelLegend}<span style="opacity:.7"> · ${n} daylight h · 2 days per row</span>`;
+  el('spotTable').innerHTML = blockHtml.map(html => `<div class="spot-table-block">${html}</div>`).join('');
   requestAnimationFrame(() => {
     const active = el('spotTable').querySelector('td.active');
     if (active) active.scrollIntoView({ block: 'nearest', inline: 'center' });
