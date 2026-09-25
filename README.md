@@ -1,18 +1,19 @@
-# Baltic Wind
+# Sultans Radar
 
 Kite-surf forecast for 13 Polish Baltic spots. Map-first: each spot is coloured by
 sustained wind and shows where the wind blows; the timeline highlights
 **daylight** kiteable windows (you don't kite in the dark), and selecting a spot opens a
-Windguru-style 15-day graph. Medium-range data from **ECMWF IFS (9 km)** via
-[Open-Meteo](https://open-meteo.com) — complements a short-range Windguru Pro/ICON view.
+Windguru-style 15-day graph. Forecast data comes from a server-side cached
+**ICON-D2 → ICON-EU → ECMWF IFS** blend via [Open-Meteo](https://open-meteo.com):
+high-resolution short range, broader European mid range, and ECMWF long range.
 
 ## How it works
 
 ```
-Open-Meteo (ECMWF IFS 9km)
-        │  watches the free model METADATA, fetches only when a new 6-hourly run lands
+Open-Meteo (ICON-D2 2.2km + ICON-EU 7km + ECMWF IFS 9km)
+        │  watches free model METADATA, fetches each model only when a new run lands
         ▼
- Node server (src/server.js) ── in-memory cache ──► GET /api/forecast (JSON)
+ Node server (src/server.js) ── blends + caches ──► GET /api/forecast (JSON)
         │  also serves the static UI
         ▼
  Browser (public/) ── Leaflet map + timeline + graph
@@ -20,17 +21,17 @@ Open-Meteo (ECMWF IFS 9km)
  Caddy ── TLS + reverse proxy (deploy/Caddyfile)
 ```
 
-Your friends' browsers hit **your** server, not Open-Meteo — one shared cache covers
-everyone, so total upstream calls are trivial (well inside the free, non-commercial tier).
-No API key, no backend database, no build step.
+Your friends' browsers hit **your** server, not Open-Meteo. One shared cache covers
+everyone, and the server refreshes only when upstream model runs change. No API key,
+no backend database, no build step.
 
 ## Layout
 
 | Path | What |
 |---|---|
-| `src/server.js` | Zero-dependency Node HTTP server: static hosting + `/api/forecast` + scheduled refresh |
+| `src/server.js` | Zero-dependency Node HTTP server: static hosting + blended `/api/forecast` + scheduled refresh |
 | `src/spots.js` | The 13 spots (coords + label offsets) — single source of truth |
-| `src/config.js` | Port, model, refresh cadence, kite threshold (all env-overridable) |
+| `src/config.js` | Port, blend models, refresh cadence, kite threshold (all env-overridable) |
 | `public/index.html` · `app.js` · `styles.css` | The front-end |
 | `deploy/Caddyfile` | Reverse proxy + automatic HTTPS |
 | `deploy/baltic-wind.service` | systemd unit |
@@ -44,20 +45,30 @@ node src/server.js
 # → baltic-wind listening on http://127.0.0.1:8787
 ```
 
-Open http://127.0.0.1:8787. First load fetches all 13 spots; `/api/health` reports freshness.
+Open http://127.0.0.1:8787. First load fetches all 13 spots for each blend model;
+`/api/health` reports freshness and loaded model state.
 
 Config via env (see `.env.example`): `PORT`, `OPENMETEO_MODEL` (`ecmwf_ifs` = 9 km HRES,
-`ecmwf_ifs025` = 0.25°), `POST_RUN_DELAY_MIN`, `METADATA_POLL_MIN`, `KITE_THRESHOLD_KT`,
-`CELL_SELECTION` (`sea`/`land`/`nearest`).
+`ecmwf_ifs025` = 0.25° long-range fallback), `FORECAST_DAYS`, `CROSSFADE_H`,
+`POST_RUN_DELAY_MIN`, `METADATA_POLL_MIN`, `KITE_THRESHOLD_KT`, and `CELL_SELECTION`
+(`sea`/`land`/`nearest`).
 
-**Refresh is run-aligned, not clock-based.** IFS runs every 6 h and appears on Open-Meteo
-a few hours after its initialisation. The server polls the model's *metadata* endpoint
+**Refresh is run-aligned, not clock-based.** The server polls each model's metadata endpoint
 (`/data/<model>/static/meta.json`, which is **free** and doesn't count toward limits) every
-`METADATA_POLL_MIN` minutes, and re-fetches the forecast only once `last_run_availability_time`
-advances — `POST_RUN_DELAY_MIN` minutes later, for Open-Meteo's eventual-consistency settle.
-That's ~4 forecast fetches/day instead of 48. A `SAFETY_REFRESH_MIN` fallback re-fetches if the
-metadata is unreachable. (Open-Meteo suggests waiting ~10 min after availability across their
-redundant servers; bump `POST_RUN_DELAY_MIN` if you ever see a stale read.)
+`METADATA_POLL_MIN` minutes. It re-fetches only the model whose
+`last_run_availability_time` advanced, after `POST_RUN_DELAY_MIN` minutes of settle time.
+A `SAFETY_REFRESH_MIN` fallback re-fetches if metadata is unreachable.
+
+The default blend is:
+
+| Lead time | Model |
+|---|---|
+| 0-48 h | ICON-D2 2.2 km |
+| 48-120 h | ICON-EU 7 km |
+| 120 h+ | ECMWF IFS 9 km |
+
+`CROSSFADE_H` controls a linear blend around model seams so the graph does not jump sharply
+when control passes from one model to the next.
 
 ## Deploy on a small Linux server
 
@@ -84,8 +95,8 @@ Open ports **80 and 443** to the internet (Caddy needs 80 for the ACME challenge
 
 ## Data & licence
 
-- Weather: **Open-Meteo**, CC BY 4.0, ECMWF IFS open data. Attribution is shown in the UI
-  footer — keep it.
+- Weather: **Open-Meteo**, CC BY 4.0, using DWD ICON and ECMWF IFS open data.
+  Attribution is shown in the UI footer — keep it.
 - Free tier is **non-commercial**. This is a personal app for you and friends; if it ever
   goes commercial, switch to a paid Open-Meteo plan (`customer-api.open-meteo.com` + `apikey`).
 - Basemap: OpenStreetMap standard tiles, dark-inverted in CSS. For heavier/public traffic,
@@ -98,5 +109,7 @@ Open ports **80 and 443** to the internet (Caddy needs 80 for the ACME challenge
   to compare.
 - Wind direction from Open-Meteo is the direction wind comes **from**; labels keep that
   meteorological convention, while map arrows show where the wind blows **to**.
+- The graph includes a small model-provenance band so you can see which hours come from
+  ICON-D2, ICON-EU, or ECMWF.
 - Ideas: per-spot preferred wind direction (onshore/offshore/side filtering), gust-spread
-  warning, a "best session this week" banner, AIFS as a second-opinion model overlay.
+  warning, a "best session this week" banner, AIFS as a second-opinion overlay.
