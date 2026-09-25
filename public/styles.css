@@ -63,13 +63,34 @@ header { min-height: 72px; padding: 10px 22px; display: flex; align-items: cente
 .graph-panel .gp-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
 .graph-panel .gp-head b { font-size: 15px; }
 .graph-panel .gp-head span { color: var(--muted); font-size: 12px; }
+.graph-panel #gpSub i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+.graph-panel #gpSub span { margin-right: 7px; white-space: nowrap; }
 .graph-panel .gp-legend { margin-left: auto; display: flex; gap: 12px; font-size: 11px; color: var(--muted); }
 .graph-panel .gp-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
+.view-toggle { display: inline-flex; align-items: center; padding: 2px; border: 1px solid var(--line); border-radius: 8px; background: rgba(13,29,47,.92); gap: 2px; }
+.view-toggle button { border: 0; border-radius: 6px; padding: 4px 8px; background: transparent; color: var(--muted); font-size: 11px; font-weight: 800; cursor: pointer; }
+.view-toggle button.active { background: var(--accent); color: #06101c; }
 .gp-dir { display: flex; justify-content: space-between; gap: 2px; margin: 0 30px 4px 34px; color: var(--muted); font-size: 13px; line-height: 1; overflow: hidden; }
 .gp-dir span { flex: 0 0 auto; min-width: 12px; text-align: center; color: #c8d7e5; }
 .graph-panel #graph { height: calc(100% - 48px); min-height: 300px; }
 .graph-panel svg { width: 100%; height: 100%; display: block; }
 .graph-panel .gp-close { position: absolute; right: 10px; top: 8px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); border-radius: 8px; width: 26px; height: 26px; cursor: pointer; }
+.spot-table-wrap { height: calc(100% - 38px); min-height: 280px; overflow: auto; border: 1px solid rgba(41,65,88,.72); border-radius: 10px; background: rgba(7,18,30,.72); }
+.spot-table-wrap[hidden], .gp-dir[hidden], #graph[hidden] { display: none; }
+.spot-table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; font-size: 12px; line-height: 1.15; }
+.spot-table th, .spot-table td { min-width: 38px; height: 26px; padding: 3px 5px; border-right: 1px solid rgba(6,16,28,.72); border-bottom: 1px solid rgba(41,65,88,.5); text-align: center; white-space: nowrap; }
+.spot-table th { position: sticky; left: 0; z-index: 2; min-width: 82px; text-align: left; color: var(--text); background: #0b1b2c; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+.spot-table td { color: #d5e4f1; background: rgba(15,34,53,.72); }
+.spot-table td.night { background-image: linear-gradient(rgba(6,16,28,.48), rgba(6,16,28,.48)); color: #90a5b7; }
+.spot-table td.daylight { box-shadow: inset 0 1px 0 rgba(53,185,255,.08); }
+.spot-table td.active { outline: 2px solid #fff; outline-offset: -2px; position: relative; z-index: 1; }
+.spot-table .day-row td, .spot-table .time-row td { color: #e8f2fb; font-weight: 800; background: rgba(17,41,64,.9); }
+.spot-table .model-row td { color: var(--muted); font-size: 10px; }
+.spot-table .model-cell i { display: block; width: 100%; height: 4px; margin: 0 0 2px; border-radius: 2px; }
+.spot-table .wind-cell, .spot-table .gust-cell { color: #04121e; font-weight: 900; }
+.spot-table .dir-row td { font-size: 17px; color: #f4f8fb; }
+.spot-table .temp-cell { background: #f3cb44; color: #17202a; }
+.spot-table .precip-cell { color: #ffb08c; }
 
 .legend-title { color: var(--text); font-weight: 800; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
 
