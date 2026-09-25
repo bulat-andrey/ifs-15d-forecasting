@@ -40,6 +40,7 @@ const modelLabel = id => {
 const el = id => document.getElementById(id);
 const THRESHOLD_KEY = 'sultansradar.thresholdKt';
 const DIR_OVERRIDES_KEY = 'sultansradar.directionSectors';
+const DIR_INVERT_KEY = 'sultansradar.directionRoseInvert';
 let S = null;        // forecast payload
 let times = [];      // master hourly time array (ISO local, "YYYY-MM-DDTHH:MM")
 let t0 = 0;          // epoch of times[0], parsed as UTC for consistent indexing
@@ -48,6 +49,8 @@ let selName = null;
 let detailView = 'table';
 let threshold = 12;
 let dirOverrides = {};
+let dirRoseInvert = true;
+let dirDrag = null;
 let map, markerObjs = [];
 let timelineIdxs = [];
 
@@ -106,6 +109,14 @@ async function boot() {
   el('dirReset').onclick = resetDirectionSettings;
   el('dirFrom').oninput = renderDirectionRoseFromInputs;
   el('dirTo').oninput = renderDirectionRoseFromInputs;
+  dirRoseInvert = localStorage.getItem(DIR_INVERT_KEY) !== '0';
+  el('dirInvert').checked = dirRoseInvert;
+  el('dirInvert').onchange = () => {
+    dirRoseInvert = el('dirInvert').checked;
+    localStorage.setItem(DIR_INVERT_KEY, dirRoseInvert ? '1' : '0');
+    renderDirectionRoseFromInputs();
+  };
+  setupDirectionDrag();
   update(curIdx);
   // Re-run label de-collision whenever the view changes (zoom changes disc spacing;
   // pan/resize change which labels would run off the edge).
@@ -456,12 +467,18 @@ function openDirectionSettings() {
   if (!s) return;
   el('graphPanel').hidden = true;
   const [from = 0, to = 359] = (s.goodFrom && s.goodFrom[0]) || [];
+  const panel = el('dirSettings');
+  panel.style.left = '';
+  panel.style.top = '';
+  panel.style.right = '';
+  panel.style.transform = '';
   el('dirSpotName').textContent = s.name;
-  el('dirSummary').textContent = `Suitable wind FROM: ${directionRangeText(s)}`;
+  updateDirectionSummary(s);
   el('dirFrom').value = from;
   el('dirTo').value = to;
+  el('dirInvert').checked = dirRoseInvert;
   renderDirectionRose([[from, to]]);
-  el('dirSettings').hidden = false;
+  panel.hidden = false;
 }
 
 function closeDirectionSettings() {
@@ -496,6 +513,7 @@ function renderDirectionRoseFromInputs() {
 }
 
 function renderDirectionRose(ranges) {
+  const displayRanges = dirRoseInvert ? ranges.map(([a, b]) => [normDeg(a + 180), normDeg(b + 180)]) : ranges;
   let ticks = '', labels = '';
   for (let d = 0; d <= 350; d += 10) {
     const major = d % 30 === 0;
@@ -505,7 +523,7 @@ function renderDirectionRose(ranges) {
     ticks += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" class="${major ? 'major' : ''}"/>`;
     labels += `<text x="${lx.toFixed(1)}" y="${(ly + 3).toFixed(1)}" class="${major ? 'major' : ''}">${d}</text>`;
   }
-  const sector = ranges.map(([a, b]) => `<path d="${sectorPath(a, b)}"/>`).join('');
+  const sector = displayRanges.map(([a, b]) => `<path d="${sectorPath(a, b)}"/>`).join('');
   el('dirRose').innerHTML = `<svg viewBox="0 0 300 300" role="img" aria-label="Suitable wind direction rose">`
     + `<circle cx="150" cy="150" r="128" class="outer"/>`
     + `<g class="sector">${sector}</g>`
@@ -513,6 +531,38 @@ function renderDirectionRose(ranges) {
     + `<text x="150" y="28" class="cardinal">N</text><text x="272" y="154" class="cardinal">E</text><text x="150" y="280" class="cardinal">S</text><text x="28" y="154" class="cardinal">W</text>`
     + `<circle cx="150" cy="150" r="4" class="center"/>`
     + `</svg>`;
+  if (selName) {
+    const s = S.spots.find(x => x.name === selName);
+    if (s) updateDirectionSummary(s);
+  }
+}
+
+function updateDirectionSummary(spot) {
+  el('dirSummary').textContent = `Input wind FROM: ${directionRangeText(spot)} · rose shows ${dirRoseInvert ? 'wind TO' : 'wind FROM'}`;
+}
+
+function setupDirectionDrag() {
+  const panel = el('dirSettings'), handle = el('dirDragHandle');
+  const move = e => {
+    if (!dirDrag) return;
+    e.preventDefault();
+    const shell = document.querySelector('.map-shell').getBoundingClientRect();
+    const rect = panel.getBoundingClientRect();
+    const x = Math.max(8, Math.min(shell.width - rect.width - 8, e.clientX - shell.left - dirDrag.dx));
+    const y = Math.max(8, Math.min(shell.height - rect.height - 8, e.clientY - shell.top - dirDrag.dy));
+    panel.style.left = `${x}px`;
+    panel.style.top = `${y}px`;
+    panel.style.right = 'auto';
+    panel.style.transform = 'none';
+  };
+  const up = () => { dirDrag = null; document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); };
+  handle.addEventListener('pointerdown', e => {
+    const rect = panel.getBoundingClientRect();
+    dirDrag = { dx: e.clientX - rect.left, dy: e.clientY - rect.top };
+    handle.setPointerCapture?.(e.pointerId);
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup', up);
+  });
 }
 
 function saveDirectionSettings() {
