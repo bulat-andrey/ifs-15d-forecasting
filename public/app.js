@@ -1188,7 +1188,7 @@ function renderGraph(name) {
     if (!showCadencePoint(i)) continue;
     const title = `${formatHour(i)} · ${modelLabel(mv[i])}`;
     if (gust[i] != null) points += `<circle cx="${x(i).toFixed(1)}" cy="${yW(gust[i]).toFixed(1)}" r="${pointR.toFixed(2)}" fill="var(--gust)" stroke="#06101c" stroke-width=".55"><title>${title} · gust ${r(gust[i])} kt</title></circle>`;
-    if (wind[i] != null) points += `<circle cx="${x(i).toFixed(1)}" cy="${yW(wind[i]).toFixed(1)}" r="${pointR.toFixed(2)}" fill="var(--wind)" stroke="#06101c" stroke-width=".55"><title>${title} · wind ${r(wind[i])} kt</title></circle>`;
+    if (wind[i] != null) points += `<circle cx="${x(i).toFixed(1)}" cy="${yW(wind[i]).toFixed(1)}" r="${pointR.toFixed(2)}" fill="var(--wind)" stroke="#06101c" stroke-width=".55"><title>${title} · wind ${r(wind[i], 1)} kt</title></circle>`;
   }
 
   const svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Forecast graph for ${s.name}, ${graphRangeLabel(lo)} to ${graphRangeLabel(hi)}">`
