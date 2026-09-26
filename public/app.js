@@ -10,10 +10,27 @@ const windColor = s =>
 const COMPASS = ['N','NE','E','SE','S','SW','W','NW'];
 const DIRECTION_EDGE_TOLERANCE_DEG = 5;
 // Open-Meteo gives the meteorological direction wind comes FROM.
-// Labels keep that convention; barbs show where the air flows TO.
-const windBarb = deg => `<svg class="wind-barb" viewBox="0 0 28 18" aria-hidden="true" style="--barb-rot:${normDeg(deg + 180)}deg">`
-  + `<g><line x1="4" y1="12" x2="24" y2="7"/><line x1="8" y1="11" x2="8" y2="4"/><line x1="11" y1="10.2" x2="11" y2="5.2"/></g>`
-  + `</svg>`;
+// Wind barbs keep that convention: the staff points toward where the wind comes FROM.
+function windBarb(deg, speedKt) {
+  if (deg == null) return '';
+  const kt = Math.max(0, Math.round(Number(speedKt) || 0));
+  let rest = Math.round(kt / 5) * 5;
+  const pennants = Math.floor(rest / 50); rest -= pennants * 50;
+  const full = Math.floor(rest / 10); rest -= full * 10;
+  const half = rest >= 5 ? 1 : 0;
+  let marks = '', y = 6;
+  for (let i = 0; i < pennants; i++, y += 4) {
+    marks += `<path d="M16 ${y} L25 ${y + 3} L16 ${y + 6} Z" class="barb-fill"/>`;
+  }
+  for (let i = 0; i < full; i++, y += 4) {
+    marks += `<line x1="16" y1="${y}" x2="25" y2="${y + 4}"/>`;
+  }
+  if (half) marks += `<line x1="16" y1="${y}" x2="22" y2="${y + 3}"/>`;
+  if (!marks) marks = `<circle cx="16" cy="16" r="3.2" class="barb-calm"/>`;
+  return `<svg class="wind-barb" viewBox="0 0 32 32" aria-hidden="true" style="--barb-rot:${normDeg(deg)}deg">`
+    + `<g><line x1="16" y1="27" x2="16" y2="5"/>${marks}</g>`
+    + `</svg>`;
+}
 const compassFrom = deg => COMPASS[Math.round(deg / 45) % 8];
 const r = (v, d = 0) => (v == null ? null : Math.round(v * 10 ** d) / 10 ** d);
 const normDeg = deg => ((deg % 360) + 360) % 360;
@@ -336,7 +353,7 @@ function drawMarkers(i) {
     const active = s.name === selName ? ' active' : '';
     const pos = place[e.i];
     const html = `<div class="pin${active}">`
-      + `<div class="disc${dirClass}" style="background:${windColor(e.speed)}"><span>${windBarb(deg)}</span></div>`
+      + `<div class="disc${dirClass}" style="background:${windColor(e.speed)}"><span>${windBarb(deg, e.speed)}</span></div>`
       + `<div class="plabel" style="left:${pos.dx}px;top:${pos.dy}px;width:${e.w}px"><span>${s.name}</span>`
       + `<b style="margin-left:auto;color:${windColor(e.speed)}">${e.windLabel}</b></div></div>`;
     markerObjs[e.i].m.setIcon(L.divIcon({ className: '', html, iconSize: [0, 0], iconAnchor: [0, 0] }));
@@ -497,7 +514,7 @@ function fillSelected(name, i) {
   el('spotDirRange').textContent = `Suitable FROM ${directionRangeText(s)}`;
   el('spotDirRange').title = `Accepts ${DIRECTION_EDGE_TOLERANCE_DEG}° near edges. Same sector shown as wind blowing TO: ${directionToRangeText(s)}`;
   el('spotSpeed').textContent = speed;
-  el('spotArrow').innerHTML = windBarb(deg);
+  el('spotArrow').innerHTML = windBarb(deg, speed);
   el('spotArrow').style.background = windColor(speed);
   el('spotArrow').classList.toggle('dir-good', directionOk(s, deg));
   el('spotArrow').classList.toggle('dir-bad', !directionOk(s, deg));
@@ -906,7 +923,7 @@ function renderSpotTable(name) {
       modelCells += `<td class="${c} model-cell" title="${modelLabel(mid)}"><i style="background:${modelColor(mid)}"></i></td>`;
       windCells += `<td class="${c} wind-cell" title="${title}" style="background:${windColor(wind)}">${wind}</td>`;
       gustCells += `<td class="${c} gust-cell" title="${title}" style="background:${windColor(gust)}">${gust}</td>`;
-      dirCells += `<td class="${c} ${dirOk ? 'dir-good' : 'dir-bad'}" title="${compassFrom(deg)} · ${Math.round(deg)}° · ${directionStatus(s, deg)}"><span class="dir-arrow">${windBarb(deg)}</span><span class="dir-deg">${Math.round(deg)}°</span></td>`;
+      dirCells += `<td class="${c} ${dirOk ? 'dir-good' : 'dir-bad'}" title="${compassFrom(deg)} · ${Math.round(deg)}° · ${directionStatus(s, deg)}"><span class="dir-arrow">${windBarb(deg, wind)}</span><span class="dir-deg">${Math.round(deg)}°</span></td>`;
       tempCells += `<td class="${c} temp-cell">${temp}</td>`;
       precipCells += `<td class="${c} precip-cell">${precip > 0 ? precip : '-'}</td>`;
     });
@@ -1085,7 +1102,7 @@ function renderGraph(name) {
   let directions = '';
   for (let i = lo; i <= hi; i++) {
     const deg = dir[i];
-    if (i % 6 === 0 && deg != null) directions += `<span title="${formatHour(i)} · ${compassFrom(deg)} ${Math.round(deg)}°">${windBarb(deg)}</span>`;
+    if (i % 6 === 0 && deg != null) directions += `<span title="${formatHour(i)} · ${compassFrom(deg)} ${Math.round(deg)}°">${windBarb(deg, wind[i])}</span>`;
   }
   el('gpDir').innerHTML = directions;
   el('gpName').textContent = s.name;
@@ -1192,7 +1209,7 @@ function setupGraphHover(s, lo, hi, x, yW, padL, plotW) {
     tip.innerHTML = `<b>${formatHour(i)}</b>`
       + `<span><i style="background:var(--wind)"></i>Wind <b>${r(wind)}</b> kt</span>`
       + `<span><i style="background:var(--gust)"></i>Gust <b>${r(gust)}</b> kt</span>`
-      + (deg != null ? `<span>${windBarb(deg)} ${compassFrom(deg)} · ${Math.round(deg)}°</span>` : '')
+      + (deg != null ? `<span>${windBarb(deg, wind)} ${compassFrom(deg)} · ${Math.round(deg)}°</span>` : '')
       + (temp != null ? `<span>${r(temp)} °C</span>` : '')
       + (precip > 0 ? `<span><i style="background:var(--precip)"></i>${r(precip, 1)} mm</span>` : '')
       + (mid ? `<span class="gp-tooltip-model" style="color:${modelColor(mid)}">${modelLabel(mid)}</span>` : '');

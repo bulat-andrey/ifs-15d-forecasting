@@ -29,9 +29,10 @@ header { min-height: 66px; padding: 8px 20px; display: flex; align-items: center
 .spot-arrow { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; color: #07111c; font-size: 16px; font-weight: 900; background: var(--safe); flex: 0 0 auto; }
 .spot-arrow.dir-good { color: #39eaa0; box-shadow: 0 0 0 2px rgba(57,234,160,.75); text-shadow: 0 1px 2px rgba(0,0,0,.95), 0 0 4px rgba(0,0,0,.8); }
 .spot-arrow.dir-bad { color: #ff9a8c; box-shadow: 0 0 0 2px rgba(255,154,140,.7); text-shadow: 0 1px 2px rgba(0,0,0,.95), 0 0 4px rgba(0,0,0,.8); }
-.wind-barb { width: 24px; height: 16px; display: inline-block; vertical-align: -3px; overflow: visible; fill: none; stroke: currentColor; stroke-width: 2.3; stroke-linecap: round; stroke-linejoin: round; }
-.wind-barb g { transform: rotate(var(--barb-rot)); transform-origin: 14px 9px; transform-box: view-box; }
-.spot-arrow .wind-barb { width: 22px; height: 16px; }
+.wind-barb { width: 24px; height: 24px; display: inline-block; vertical-align: -6px; overflow: visible; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.wind-barb g { transform: rotate(var(--barb-rot)); transform-origin: 16px 16px; transform-box: view-box; }
+.wind-barb .barb-fill, .wind-barb .barb-calm { fill: currentColor; stroke: currentColor; }
+.spot-arrow .wind-barb { width: 23px; height: 23px; }
 .spot-kite { border-radius: 7px; padding: 5px 8px; color: #032518; background: var(--safe); font-weight: 850; }
 .spot-kite.no { background: var(--calm); color: #0a1521; }
 .spot-links { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; }
@@ -143,7 +144,7 @@ header { min-height: 66px; padding: 8px 20px; display: flex; align-items: center
 .graph-panel #graph { flex: 1 1 auto; min-height: 0; position: relative; }
 .graph-panel #graph #gpSvgHost { width: 100%; height: 100%; }
 .graph-panel svg { width: 100%; height: 100%; display: block; }
-.graph-panel svg.wind-barb { display: inline-block; width: 20px; height: 13px; }
+.graph-panel svg.wind-barb { display: inline-block; width: 20px; height: 20px; }
 .gp-tooltip { position: absolute; z-index: 5; pointer-events: none; display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: rgba(6,16,28,.95); color: var(--text); font-size: 11px; white-space: nowrap; box-shadow: 0 4px 10px rgba(0,0,0,.4); }
 .gp-tooltip[hidden] { display: none; }
 .gp-tooltip b { font-size: 12px; }
@@ -170,7 +171,7 @@ header { min-height: 66px; padding: 8px 20px; display: flex; align-items: center
 .spot-table .wind-cell, .spot-table .gust-cell { color: #04121e; font-weight: 900; }
 .spot-table .dir-row td { height: 29px; color: #f4f8fb; line-height: 1; }
 .spot-table .dir-row .dir-arrow { display: block; font-size: 15px; }
-.spot-table .dir-row .wind-barb { width: 22px; height: 14px; margin: 0 auto; }
+.spot-table .dir-row .wind-barb { width: 21px; height: 21px; margin: -3px auto -2px; }
 .spot-table .dir-row .dir-deg { display: block; margin-top: 2px; font-size: 9px; font-weight: 800; color: rgba(244,248,251,.82); }
 .spot-table .dir-row td.dir-good { color: #39eaa0; background: rgba(37,216,138,.14); }
 .spot-table .dir-row td.dir-bad { color: #ff9a8c; background: rgba(232,54,85,.2); }
@@ -196,7 +197,7 @@ header { min-height: 66px; padding: 8px 20px; display: flex; align-items: center
 .pin { position: absolute; }
 .pin .disc { position: absolute; width: 42px; height: 42px; border-radius: 50%; transform: translate(-50%, -50%); display: grid; place-items: center; color: #06101c; font-size: 21px; font-weight: 900; border: 3px solid rgba(255,255,255,.9); box-shadow: 0 3px 6px rgba(0,0,0,.5); cursor: pointer; }
 .pin .disc span { color: #06101c; }
-.pin .wind-barb { width: 28px; height: 20px; }
+.pin .wind-barb { width: 29px; height: 29px; }
 .pin .disc.dir-good { border-color: #39eaa0; box-shadow: 0 0 0 2px rgba(57,234,160,.28), 0 3px 6px rgba(0,0,0,.5); }
 .pin .disc.dir-bad { border-color: #ff9a8c; box-shadow: 0 0 0 2px rgba(255,154,140,.22), 0 3px 6px rgba(0,0,0,.5); }
 .pin .disc.dir-good span { color: #39eaa0; text-shadow: 0 1px 2px rgba(0,0,0,.95), 0 0 4px rgba(0,0,0,.8); }
