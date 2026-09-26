@@ -20,8 +20,13 @@ const inRange = (deg, a, b) => {
   const d = normDeg(deg), from = normDeg(a), to = normDeg(b);
   return from <= to ? d >= from && d <= to : d >= from || d <= to;
 };
+const directionRangeWidth = (a, b) => {
+  const from = normDeg(a), to = normDeg(b);
+  return from <= to ? to - from : to + 360 - from;
+};
 const directionOk = (spot, deg) => deg != null && (!spot.goodFrom || !spot.goodFrom.length || spot.goodFrom.some(([a, b]) =>
-  inRange(deg, a - DIRECTION_EDGE_TOLERANCE_DEG, b + DIRECTION_EDGE_TOLERANCE_DEG)
+  directionRangeWidth(a, b) + DIRECTION_EDGE_TOLERANCE_DEG * 2 >= 359
+    || inRange(deg, a - DIRECTION_EDGE_TOLERANCE_DEG, b + DIRECTION_EDGE_TOLERANCE_DEG)
 ));
 const directionStatus = (spot, deg) => directionOk(spot, deg) ? 'suitable direction' : 'offshore / cross-offshore';
 
