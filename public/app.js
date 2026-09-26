@@ -605,7 +605,7 @@ function renderMobileOverview() {
   const dayIndexes = times.map((t, i) => t.startsWith(date) && isTableUsable(i) ? i : -1).filter(i => i >= 0);
   el('mobileTimeList').innerHTML = dayIndexes.map(i => {
     const good = S.spots.some(s => {
-      const speed = windAt(s, i), deg = s.hourly.wind_direction_10m[i];
+      const speed = r(windAt(s, i)), deg = s.hourly.wind_direction_10m[i];
       return speed >= threshold && isDaylight(i) && directionOk(s, deg);
     });
     const active = i === curIdx ? ' active' : '';

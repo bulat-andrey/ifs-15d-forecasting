@@ -274,7 +274,7 @@ header { min-height: 66px; padding: 8px 20px; display: flex; align-items: center
   .mobile-time-slot.good.active { color: #042719; }
   .mobile-spot-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; min-width: 0; }
   .mobile-spot { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'main dir' 'values status'; gap: 4px 5px; width: 100%; min-height: 69px; padding: 7px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); text-align: left; }
-  .mobile-spot.is-kiteable { border-color: rgba(37,216,138,.62); }
+  .mobile-spot.is-kiteable { border-color: #25d88a; background: rgba(37,216,138,.38); }
   .mobile-spot:active { background: var(--surface-2); }
   .mobile-spot-main { grid-area: main; display: grid; min-width: 0; }
   .mobile-spot-main strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
