@@ -94,6 +94,7 @@ let markerStyle = 'barbs';
 let dirOverrides = {};
 let dirRoseInvert = true;
 let dirDrag = null;
+let mobileMapOpen = false;
 let map, markerObjs = [];
 let timelineIdxs = [];
 
@@ -149,6 +150,9 @@ async function boot() {
   el('play').onclick = togglePlay;
   el('prevSlot').onclick = () => stepTimeline(-1);
   el('nextSlot').onclick = () => stepTimeline(1);
+  el('mobilePrevSlot').onclick = () => stepTimeline(-1);
+  el('mobileNextSlot').onclick = () => stepTimeline(1);
+  el('mobileMapToggle').onclick = toggleMobileMap;
   el('gpClose').onclick = clearSelection;
   setupGraphPanelDrag();
   el('tableView').onclick = () => setDetailView('table');
@@ -544,6 +548,7 @@ function update(i, fromTimeline = false) {
   }
   if (selName) fillSelected(selName, i);
   if (selName && detailView === 'table' && !el('graphPanel').hidden) renderSpotTable(selName);
+  renderMobileOverview();
 }
 
 function onTimelineKey(e) {
@@ -588,6 +593,42 @@ function fillSelected(name, i) {
     wg.hidden = true; wg.removeAttribute('href');
   }
   el('spotSummary').hidden = false;
+}
+
+function renderMobileOverview() {
+  if (!S || !times.length) return;
+  const date = times[curIdx].slice(0, 10);
+  const dateText = new Date(`${date}T12:00:00Z`).toLocaleDateString('en-GB', {
+    weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC'
+  });
+  el('mobileBoardDate').textContent = dateText;
+  el('mobileTime').textContent = times[curIdx].slice(11, 16);
+  el('mobileTimeZone').textContent = S.timezone || 'local';
+  el('mobileSpotList').innerHTML = S.spots.map(s => {
+    const speed = r(windAt(s, curIdx));
+    const gust = r(s.hourly.wind_gusts_10m[curIdx]);
+    const deg = s.hourly.wind_direction_10m[curIdx];
+    const temp = r(s.hourly.temperature_2m[curIdx]);
+    const suitable = directionOk(s, deg);
+    const usable = speed >= threshold && isDaylight(curIdx) && suitable;
+    return `<button class="mobile-spot ${usable ? 'is-kiteable' : ''}" type="button" data-spot="${s.name}">`
+      + `<span class="mobile-spot-main"><strong>${s.name}</strong><small>${s.place || ''}</small></span>`
+      + `<span class="mobile-spot-dir ${suitable ? 'dir-good' : 'dir-bad'}">${directionMarker(deg, speed)}<small>${Math.round(deg)}°</small></span>`
+      + `<span class="mobile-spot-values"><b>${speed} kt</b><span>${gust} gust</span><span>${temp} °C</span></span>`
+      + `<span class="mobile-spot-status">${usable ? 'Kiteable' : speed < threshold ? `Below ${threshold}` : suitable ? 'Limited' : 'Direction'}</span>`
+      + `</button>`;
+  }).join('');
+  el('mobileSpotList').querySelectorAll('[data-spot]').forEach(button => {
+    button.onclick = () => selectSpot(button.dataset.spot);
+  });
+}
+
+function toggleMobileMap() {
+  mobileMapOpen = !mobileMapOpen;
+  document.querySelector('.map-shell').classList.toggle('mobile-map-open', mobileMapOpen);
+  el('mobileMapToggle').textContent = mobileMapOpen ? 'Forecast' : 'Map';
+  el('mobileMapToggle').setAttribute('aria-label', mobileMapOpen ? 'Show forecast overview' : 'Show map');
+  if (mobileMapOpen) map.invalidateSize();
 }
 
 function openDirectionSettings() {
@@ -956,8 +997,8 @@ function renderSpotTable(name) {
   const row = (label, cells, cls = '') => `<tr class="${cls}"><th>${label}</th>${cells}</tr>`;
   const activeIdx = idxs.find(idx => idx >= curIdx) ?? idxs[idxs.length - 1];
   const blockHtml = [];
-  for (let d = 0; d < dayGroups.length; d += 2) {
-    const blockIdxs = dayGroups.slice(d, d + 2).flatMap(g => g.idxs);
+  for (let d = 0; d < dayGroups.length; d += 1) {
+    const blockIdxs = dayGroups[d].idxs;
     let dayCells = '', timeCells = '', modelCells = '', windCells = '', gustCells = '', dirCells = '', tempCells = '', precipCells = '';
     blockIdxs.forEach((i, pos) => {
       const t = times[i], prev = blockIdxs[pos - 1], dayStart = prev == null || times[prev].slice(0, 10) !== t.slice(0, 10);
