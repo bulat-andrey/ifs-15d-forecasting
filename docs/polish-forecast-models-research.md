@@ -5,7 +5,7 @@
 
 ## Decision in brief
 
-The strongest short-range candidates are **ICM UM 1.5 km / 4 km** for a point-data integration and **IMGW AROME / ALARO** for a public-file integration. **IMGW ICON-LAM** and **INCA-PL2** deserve a closer look: ICON-LAM is a newer Poland-focused regional forecast, while INCA-PL2 updates short-range 10 m wind forecasts hourly. **MeteoPG WRF 0.5 km** is geographically interesting for Pomorskie, but machine-readable access appears to require an arrangement. None of these replaces the app's 15-day ECMWF anchor. The model with the smallest grid spacing is not automatically the best wind forecast at a beach; accuracy has to be checked against observations at the actual spots. [IMGW model descriptions][imgw-products], [IMGW short-range catalogue][imgw-short], [ICM forecast map][icm-maps], [MeteoPG description][meteopg]
+The strongest public-file candidates are **IMGW AROME / ALARO**. **IMGW ICON-LAM** and **INCA-PL2** deserve a closer look: ICON-LAM is a newer Poland-focused regional forecast, while INCA-PL2 updates short-range 10 m wind forecasts hourly. **MeteoPG WRF 0.5 km** is geographically interesting for Pomorskie, but machine-readable access appears to require an arrangement. ICM's **UM 1.5 km / 4 km** forecasts remain useful to compare. On 2026-09-26 the registered user's ICM [dashboard][icm-dashboard] test selector **and models-list endpoint** showed only **COAMPS and WRF**; this makes UM availability through the standard API uncertain, but a direct UM forecast request has not yet been tested. None of these sources replaces the app's 15-day ECMWF anchor. The model with the smallest grid spacing is not automatically the best wind forecast at a beach; accuracy has to be checked against observations at the actual spots. [IMGW model descriptions][imgw-products], [IMGW short-range catalogue][imgw-short], [ICM forecast map][icm-maps], [MeteoPG description][meteopg]
 
 ### What the app needs
 
@@ -15,19 +15,20 @@ The app currently serves **13 spots**, from Łeba (17.54°E) to Krynica Morska (
 
 ## Candidate forecast models
 
-“Run frequency” means model initialisations, not a promise that a downloadable forecast arrives immediately. “Access” describes what was publicly documented at this snapshot; it does not establish that all five app variables occur in an accessible raw feed.
+“Run frequency” means model initialisations, not a promise that a downloadable forecast arrives immediately. “Access” combines published documentation with the registered user's 2026-09-26 observation of the authenticated [ICM test selector][icm-dashboard] and models-list response. It does not establish that all five app variables occur in an accessible raw feed.
 
 | Model / producer | Grid and published horizon | Run or update frequency | Wind and other parameters | Machine-readable access; fit for this app |
 | --- | --- | --- | --- | --- |
-| **UM 1.5 km**, ICM / meteo.pl | 1.5 km; about **78 h** | **2 runs/day**, 00 and 12 UTC; publication about 4.5 h after the start is ICM's general UM guidance | ICM's maps show 10 m wind, speed and gusts, temperature, cloud and precipitation; exact API field names and levels need a logged-in check | `api.meteo.pl` advertises point forecasts, but does not publicly confirm the current UM 1.5 km catalogue or every required field. Strong candidate if account access and use rights are confirmed. [ICM technical schedule][icm-schedule], [ICM maps][icm-maps], [ICM API][icm-api] |
-| **UM 4 km**, ICM / meteo.pl | 4 km; **120 h** for 00/12 UTC runs, **60 h** for 06/18 UTC runs | **4 runs/day**; ICM says UM pages appear about 4.5 h after run start | The public maps show 10 m wind and gusts alongside other weather fields | Same point-API questions as UM 1.5 km. Useful as a local medium-short-range comparison through day 5. [ICM schedule][icm-schedule], [ICM maps][icm-maps], [ICM API][icm-api] |
+| **UM 1.5 km**, ICM / meteo.pl | 1.5 km; about **78 h** | **2 runs/day**, 00 and 12 UTC; publication about 4.5 h after the start is ICM's general UM guidance | ICM's maps show 10 m wind, speed and gusts, temperature, cloud and precipitation | **Absent from the API test selector and models list.** Direct-request access has **not** been tested; if unavailable, ask ICM about dedicated delivery and terms. [ICM technical schedule][icm-schedule], [ICM maps][icm-maps], [ICM dashboard][icm-dashboard] |
+| **UM 4 km**, ICM / meteo.pl | 4 km; **120 h** for 00/12 UTC runs, **60 h** for 06/18 UTC runs | **4 runs/day**; ICM says UM pages appear about 4.5 h after run start | The public maps show 10 m wind and gusts alongside other weather fields | **Absent from the API test selector and models list.** Direct-request access remains untested; useful for visual comparison through day 5 regardless. [ICM schedule][icm-schedule], [ICM maps][icm-maps], [ICM dashboard][icm-dashboard] |
 | **AROME 2 km**, IMGW | 2 km; **30 h** | IMGW says **4 runs/day** | IMGW displays 10 m wind and gust forecasts; the exact public GRIB inventory still needs inspection | AROME is listed in IMGW's public **GRIB** datastore, rather than a documented 13-point JSON API. Good first IMGW candidate for today/tomorrow. [IMGW products][imgw-products], [IMGW wind example][imgw-wind], [IMGW datastore][imgw-data] |
 | **ALARO 4 km**, IMGW | 4 km; **72 h** | IMGW says **4 runs/day** | IMGW displays wind and gust forecasts and publishes ALARO meteograms for Łeba and Hel | ALARO GRIB is listed in the public datastore. Could provide a 2–3 day complement to AROME. [IMGW products][imgw-products], [IMGW meteograms][imgw-meteograms], [IMGW datastore][imgw-data] |
 | **ICON-LAM 2.5 km**, IMGW | 2.5 km; **60 h** on IMGW's current short-range selector | 00/06/12/18 UTC starts are shown in the selector; actual availability per cycle is unverified | The selector offers forecast parameters, but the downloadable wind-field catalogue has not been checked | Promising newer Polish model; public raw-download path and terms are **unconfirmed**. Do not confuse it with the already integrated German ICON-D2 or ICON-EU. [IMGW short-range selector][imgw-short], [IMGW model white paper][imgw-white] |
 | **COSMO 2.8 / 7 km**, IMGW | Poland 2.8 km and Baltic-wide 7 km. IMGW's descriptive page says **48 / 78 h**; its current model navigation advertises **60 / 96 h**. | **4 runs/day**, 00/06/12/18 UTC | Wind is shown in IMGW model comparisons; raw public availability differs by product | Public datastore lists COSMO GRIB products. A candidate for comparison, but the conflicting advertised horizons and product packaging need a live-file check before design. [IMGW products][imgw-products], [IMGW current navigation][imgw-short], [IMGW datastore][imgw-data] |
 | **INCA-PL2 1 km**, IMGW | **0–8 h** nowcast | Forecast refreshed **hourly** at 1 h steps; analysis uses a 10 min step | Explicitly forecasts **10 m wind components**, plus temperature, humidity and other fields; it adjusts AROME output using telemetry | Attractive “leaving now” wind layer. A public point or raw-grid feed was **not verified**; displayed maps alone are not an ingestion interface. [IMGW products][imgw-products], [IMGW white paper][imgw-white], [IMGW border forecast][imgw-border] |
 | **WRF MeteoPG 0.5 km**, Gdańsk University of Technology / TASK | 0.5 km Pomorskie nest; IMGW describes a **72 h** forecast; an older TASK page says **60 h** | IMGW describes **4 runs/day** | WRF produces meteorological forecasts, including wind, but the supplied variables for an external feed need confirmation | Likely covers this spot region geographically; exact coastal cells need validation. No public point API or price was found. A project report says data exchange must be arranged with MeteoPG. [IMGW products][imgw-products], [TASK description][meteopg], [TASK project report][meteopg-report] |
-| **WRF 3–3.4 km**, ICM / meteo.pl | Older ICM pages show roughly **72 h**, and one 12 UTC run to 120 h | Older technical page says **4 runs/day** | ICM describes wind forecast maps | Keep as a secondary lead: the current public point-API catalogue and operational status are unclear. This is separate from MeteoPG WRF. [ICM schedule][icm-schedule], [ICM maps][icm-maps] |
+| **WRF 3–3.4 km**, ICM / meteo.pl | Older ICM pages show roughly **72 h**, and one 12 UTC run to 120 h | Older technical page says **4 runs/day** | ICM describes wind forecast maps | **WRF is listed** in the API test selector and models response, but its grid, current run availability and required fields remain untested. This is separate from MeteoPG WRF. [ICM schedule][icm-schedule], [ICM maps][icm-maps], [ICM dashboard][icm-dashboard] |
+| **COAMPS**, ICM / meteo.pl | Current grid and horizon **unverified** | Current run frequency **unverified** | API's public example shows a temperature field; required 10 m wind and gust fields need testing | **COAMPS is listed** in the API test selector and models response. Listing does not prove current operational runs or coastal coverage. [ICM API][icm-api], [ICM dashboard][icm-dashboard] |
 
 **Adjacent data, outside the wind-model comparison:** ICM's **WAM Baltic wave model** is reported as running twice a day and forecasting waves, not 10 m wind. It could later add wave height/direction to a kite decision, but is not a replacement wind source. [ICM WAM description][icm-wam], [ICM schedule][icm-schedule]
 
@@ -35,11 +36,17 @@ The app currently serves **13 spots**, from Łeba (17.54°E) to Krynica Morska (
 
 ### ICM point API: the only published per-point price found
 
-The public [ICM API page][icm-api] advertises **0.01 PLN for one parameter at one location from one forecast run**, a **5 PLN minimum top-up**, and a free test point for each model/grid after registration. It describes data indexing delays and says continuous API availability is not guaranteed. Its displayed COAMPS request uses a **2017 example**, so it is evidence of the API shape and advertised tariff, not proof of today's model catalogue. The [payment terms][icm-terms] say prepaid funds can be used for 12 months; tariff and terms should be rechecked before purchasing.
+The public [ICM API page][icm-api] advertises **0.01 PLN for one parameter at one location from one forecast run**, a **5 PLN minimum top-up**, and a free test point for each model/grid after registration. It describes data indexing delays and says continuous API availability is not guaranteed. Its displayed COAMPS request uses a **2017 example**. On **2026-09-26**, the registered user saw only COAMPS and WRF in the [dashboard's test selector][icm-dashboard] and obtained this response from the models-list endpoint:
 
-Illustrative **30-day** costs for all 13 locations, **one model**, and one fetch of each new run:
+```json
+{"models":["coamps","wrf"]}
+```
 
-| Fields per spot | 2 runs/day (e.g. UM 1.5 km) | 4 runs/day (e.g. UM 4 km) |
+This is a user-supplied authenticated response; its endpoint URL was not recorded. It makes UM availability through the standard API doubtful, but does not prove that a direct UM forecast request will fail or rule out paid/negotiated feeds. A direct UM response is pending. The [payment terms][icm-terms] say prepaid funds can be used for 12 months; tariff and terms should be rechecked before purchasing.
+
+Illustrative **30-day** costs for all 13 locations, **one API model that proves accessible**, and one fetch of each new run. They apply to WRF or COAMPS **if** the required fields are offered, and to UM **only if** a direct request succeeds under the advertised tariff:
+
+| Fields per spot | 2 runs/day scenario | 4 runs/day scenario |
 | --- | ---: | ---: |
 | Wind speed + direction: 2 | **15.60 PLN/month** | **31.20 PLN/month** |
 | Speed + direction + gusts: 3 | **23.40 PLN/month** | **46.80 PLN/month** |
@@ -60,7 +67,7 @@ No public MeteoPG raw-feed price was found. [TASK's description][meteopg] identi
 | Route | Monetary cost confidence | Engineering effort | Main dependency |
 | --- | --- | --- | --- |
 | Link to provider forecast page | Usually no data-ingestion fee established here | Low | Useful to riders, but cannot enter our graph or blend |
-| ICM advertised point API | Budgetable **only if** the desired model/fields and tariff are confirmed | Medium | Registration, written use permission, grid mapping, retries and cost cap |
+| ICM advertised point API (COAMPS/WRF in models list) | Budgetable **only if** its model, fields, grid and tariff are confirmed | Medium | Written use permission, run checks, grid mapping, retries and cost cap |
 | IMGW public GRIB extraction | No per-point fee found; infrastructure cost unmeasured | High | GRIB parser, selective downloads, projection/sea-cell mapping and operational monitoring |
 | Provider-arranged point/batch feed | **Quote required** | Medium to high | Written contract, data format, freshness and availability terms |
 
@@ -89,9 +96,9 @@ IMGW publishes hourly [SYNOP wind observations][imgw-products] and the existing 
 
 ## Practical integration shapes
 
-### A. ICM point adapter
+### A. ICM point adapter, if a usable model is confirmed
 
-Register for the free test point; inspect the logged-in catalogue for **UM 1.5 km and UM 4 km**, grid/coordinate lookup, 10 m wind speed/direction/gust, temperature and precipitation, units, valid times, and one full current run. Confirm use rights. A server-side adapter would cache one response per run/spot/field, cap chargeable fetches, normalize to the app's hourly contract, and leave ECMWF for the rest of the 15 days. This is the shortest path **if** the catalog and permission checks pass. [ICM API][icm-api], [ICM usage FAQ][icm-usage]
+The user has registered and found **COAMPS and WRF** in the dashboard's test selector and models-list response. Inspect their grids, 10 m wind speed/direction/gust, temperature and precipitation, units, valid times, and a current run. Separately, test a direct UM request; the list alone does not settle whether that route responds. Confirm use rights for any candidate. A server-side adapter would cache one response per run/spot/field, cap chargeable fetches, normalize to the app's hourly contract, and leave ECMWF for the rest of the 15 days. This is a relatively short path **if** an appropriate model, fields and permission are confirmed. [ICM API][icm-api], [ICM dashboard][icm-dashboard], [ICM usage FAQ][icm-usage]
 
 ### B. IMGW GRIB extractor
 
@@ -104,7 +111,7 @@ Ask IMGW or MeteoPG for point/batch delivery covering the 13 coordinates, named 
 ## Open questions before a PRD or ADR
 
 1. Which user experience matters most: a **second-opinion model line**, a replacement for the first 48–72 hours, or a **0–8 h “go now”** wind view? This changes which feed deserves the cost.
-2. Does ICM's current API offer UM 1.5/4 km for every required field and all coastal coordinates? What is its written permission and current tariff for this app?
+2. Does a **direct UM request** return a current forecast despite UM's absence from the dashboard test selector **and models list**? Which COAMPS/WRF grids and wind fields are available for all coastal coordinates? What are ICM's written permission and current tariff for this app?
 3. Which IMGW GRIB products actually expose 10 m speed/direction or `u/v`, gusts, temperature and precipitation, and at what lead-time interval? Are AROME/ALARO/COSMO runs complete and timely for several days?
 4. Is IMGW ICON-LAM available as raw reusable data, and does INCA-PL2 offer an ingestible 10 m wind field?
 5. What are MeteoPG's source-data terms, delivery options and quote for the 13 points?
@@ -113,6 +120,7 @@ Ask IMGW or MeteoPG for point/batch delivery covering the 13 coordinates, named 
 ## Sources
 
 - [ICM API pricing, free test point, example and reliability statement][icm-api]
+- [ICM authenticated test dashboard][icm-dashboard] (model-selector and models-list response supplied by the registered user on 2026-09-26; direct UM request pending)
 - [ICM API payment terms][icm-terms]
 - [ICM current model map and parameter categories][icm-maps]
 - [ICM published run/horizon schedule][icm-schedule] and [FAQ on publication timing][icm-faq]
@@ -126,6 +134,7 @@ Ask IMGW or MeteoPG for point/batch delivery covering the 13 coordinates, named 
 - [ICM WAM explanation][icm-wam]
 
 [icm-api]: https://api.meteo.pl/
+[icm-dashboard]: https://api.meteo.pl/dashboard/
 [icm-terms]: https://api.meteo.pl/s/terms/
 [icm-maps]: https://mapy.meteo.pl/
 [icm-schedule]: https://bardzotest.meteo.pl/
