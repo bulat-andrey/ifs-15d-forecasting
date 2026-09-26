@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Sultans Radar — kite forecast</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="/styles.css?v=full-barbs-20260926" />
+  <link rel="stylesheet" href="/styles.css?v=user-settings-20260926" />
 </head>
 <body>
 <div class="app">
@@ -30,16 +30,28 @@
     </div>
     <span class="updated" id="updated">loading…</span>
     <button class="control" id="modelBtn" title="Forecast model">ECMWF IFS 9 km</button>
-    <label class="threshold-control" title="Kiteable wind threshold">
-      <span>Threshold</span>
-      <select id="thresholdSelect" aria-label="Kiteable wind threshold">
-        <option value="10">10 kt</option>
-        <option value="12">12 kt</option>
-        <option value="14">14 kt</option>
-        <option value="16">16 kt</option>
-        <option value="18">18 kt</option>
-      </select>
-    </label>
+    <div class="user-settings">
+      <button class="settings-toggle" id="userSettingsToggle" type="button" aria-label="Open user settings" aria-controls="userSettingsPanel" aria-expanded="false">⚙</button>
+      <div class="settings-panel" id="userSettingsPanel" hidden>
+        <label class="settings-field" title="Kiteable wind threshold">
+          <span>Threshold</span>
+          <select id="thresholdSelect" aria-label="Kiteable wind threshold">
+            <option value="10">10 kt</option>
+            <option value="12">12 kt</option>
+            <option value="14">14 kt</option>
+            <option value="16">16 kt</option>
+            <option value="18">18 kt</option>
+          </select>
+        </label>
+        <label class="settings-field" title="Direction marker style">
+          <span>Direction markers</span>
+          <select id="markerStyleSelect" aria-label="Direction marker style">
+            <option value="barbs">Wind barbs</option>
+            <option value="arrows">Arrows</option>
+          </select>
+        </label>
+      </div>
+    </div>
   </header>
 
   <main class="map-shell">
@@ -130,6 +142,6 @@
   </footer>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="/app.js?v=full-barbs-20260926"></script>
+<script src="/app.js?v=user-settings-20260926"></script>
 </body>
 </html>

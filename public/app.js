@@ -35,6 +35,14 @@ function windBarb(deg, speedKt) {
     + `<g><line x1="16" y1="27" x2="16" y2="5"/>${marks}</g>`
     + `</svg>`;
 }
+
+function windArrow(deg) {
+  if (deg == null) return '';
+  return `<svg class="wind-arrow" viewBox="0 0 32 32" aria-hidden="true" style="--arrow-rot:${normDeg(deg)}deg">`
+    + `<g><line x1="16" y1="27" x2="16" y2="8"/><path d="M16 5 L10 13 L22 13 Z"/></g>`
+    + `</svg>`;
+}
+
 const compassFrom = deg => COMPASS[Math.round(deg / 45) % 8];
 const r = (v, d = 0) => (v == null ? null : Math.round(v * 10 ** d) / 10 ** d);
 const normDeg = deg => ((deg % 360) + 360) % 360;
@@ -69,6 +77,7 @@ const modelLabel = id => {
 
 const el = id => document.getElementById(id);
 const THRESHOLD_KEY = 'sultansradar.thresholdKt';
+const MARKER_STYLE_KEY = 'sultansradar.markerStyle';
 const DIR_OVERRIDES_KEY = 'sultansradar.directionSectors';
 const DIR_INVERT_KEY = 'sultansradar.directionRoseInvert';
 let S = null;        // forecast payload
@@ -81,6 +90,7 @@ let graphStartIdx = 0;
 let graphEndIdx = 0;
 const MIN_GRAPH_RANGE_H = 6;
 let threshold = 12;
+let markerStyle = 'barbs';
 let dirOverrides = {};
 let dirRoseInvert = true;
 let dirDrag = null;
@@ -106,6 +116,7 @@ async function boot() {
   dirOverrides = loadDirectionOverrides();
   applyDirectionOverrides();
   threshold = loadThreshold(S.threshold_kt || 12);
+  markerStyle = loadMarkerStyle();
   times = S.spots[0].hourly.time;
   t0 = Date.parse(times[0] + ':00Z');
   graphStartIdx = 0;
@@ -125,7 +136,9 @@ async function boot() {
     el('modelBtn').textContent = S.blend.join(' → ');
     el('modelBtn').title = 'Seamless blend — best model per lead time: ' + S.blend.join(' → ');
   }
+  setupUserSettings();
   setupThresholdControl();
+  setupMarkerStyleControl();
 
   addMarkers(map0);
   // Tight fit: minimal padding so there's no dead sea west of Łeba / east of Krynica Morska.
@@ -174,6 +187,12 @@ function loadThreshold(fallback) {
   return Number.isFinite(saved) && saved > 0 ? saved : fallback;
 }
 
+function loadMarkerStyle() {
+  return localStorage.getItem(MARKER_STYLE_KEY) === 'arrows' ? 'arrows' : 'barbs';
+}
+
+const directionMarker = (deg, speedKt) => markerStyle === 'arrows' ? windArrow(deg) : windBarb(deg, speedKt);
+
 function loadDirectionOverrides() {
   try {
     const raw = JSON.parse(localStorage.getItem(DIR_OVERRIDES_KEY) || '{}');
@@ -218,6 +237,23 @@ function refreshAfterDirectionChange() {
   if (selName && !el('graphPanel').hidden) renderSpotDetail(selName, detailView);
 }
 
+function setupUserSettings() {
+  const toggle = el('userSettingsToggle'), panel = el('userSettingsPanel');
+  const setOpen = open => {
+    panel.hidden = !open;
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+  toggle.onclick = e => {
+    e.stopPropagation();
+    setOpen(panel.hidden);
+  };
+  panel.onclick = e => e.stopPropagation();
+  document.addEventListener('click', () => setOpen(false));
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') setOpen(false);
+  });
+}
+
 function setupThresholdControl() {
   const select = el('thresholdSelect');
   if (![...select.options].some(o => Number(o.value) === threshold)) {
@@ -230,6 +266,17 @@ function setupThresholdControl() {
     localStorage.setItem(THRESHOLD_KEY, String(threshold));
     updateLegend();
     buildTimeline();
+    update(curIdx);
+    if (selName && !el('graphPanel').hidden) renderSpotDetail(selName, detailView);
+  };
+}
+
+function setupMarkerStyleControl() {
+  const select = el('markerStyleSelect');
+  select.value = markerStyle;
+  select.onchange = () => {
+    markerStyle = select.value === 'arrows' ? 'arrows' : 'barbs';
+    localStorage.setItem(MARKER_STYLE_KEY, markerStyle);
     update(curIdx);
     if (selName && !el('graphPanel').hidden) renderSpotDetail(selName, detailView);
   };
@@ -357,7 +404,7 @@ function drawMarkers(i) {
     const active = s.name === selName ? ' active' : '';
     const pos = place[e.i];
     const html = `<div class="pin${active}">`
-      + `<div class="disc${dirClass}" style="background:${windColor(e.speed)}"><span>${windBarb(deg, e.speed)}</span></div>`
+      + `<div class="disc${dirClass}" style="background:${windColor(e.speed)}"><span>${directionMarker(deg, e.speed)}</span></div>`
       + `<div class="plabel" style="left:${pos.dx}px;top:${pos.dy}px;width:${e.w}px"><span>${s.name}</span>`
       + `<b style="margin-left:auto;color:${windColor(e.speed)}">${e.windLabel}</b></div></div>`;
     markerObjs[e.i].m.setIcon(L.divIcon({ className: '', html, iconSize: [0, 0], iconAnchor: [0, 0] }));
@@ -518,7 +565,7 @@ function fillSelected(name, i) {
   el('spotDirRange').textContent = `Suitable FROM ${directionRangeText(s)}`;
   el('spotDirRange').title = `Accepts ${DIRECTION_EDGE_TOLERANCE_DEG}° near edges. Same sector shown as wind blowing TO: ${directionToRangeText(s)}`;
   el('spotSpeed').textContent = speed;
-  el('spotArrow').innerHTML = windBarb(deg, speed);
+  el('spotArrow').innerHTML = directionMarker(deg, speed);
   el('spotArrow').style.background = windColor(speed);
   el('spotArrow').classList.toggle('dir-good', directionOk(s, deg));
   el('spotArrow').classList.toggle('dir-bad', !directionOk(s, deg));
@@ -927,7 +974,7 @@ function renderSpotTable(name) {
       modelCells += `<td class="${c} model-cell" title="${modelLabel(mid)}"><i style="background:${modelColor(mid)}"></i></td>`;
       windCells += `<td class="${c} wind-cell" title="${title}" style="background:${windColor(wind)}">${wind}</td>`;
       gustCells += `<td class="${c} gust-cell" title="${title}" style="background:${windColor(gust)}">${gust}</td>`;
-      dirCells += `<td class="${c} ${dirOk ? 'dir-good' : 'dir-bad'}" title="${compassFrom(deg)} · ${Math.round(deg)}° · ${directionStatus(s, deg)}"><span class="dir-arrow">${windBarb(deg, wind)}</span><span class="dir-deg">${Math.round(deg)}°</span></td>`;
+      dirCells += `<td class="${c} ${dirOk ? 'dir-good' : 'dir-bad'}" title="${compassFrom(deg)} · ${Math.round(deg)}° · ${directionStatus(s, deg)}"><span class="dir-arrow">${directionMarker(deg, wind)}</span><span class="dir-deg">${Math.round(deg)}°</span></td>`;
       tempCells += `<td class="${c} temp-cell">${temp}</td>`;
       precipCells += `<td class="${c} precip-cell">${precip > 0 ? precip : '-'}</td>`;
     });
@@ -1106,7 +1153,7 @@ function renderGraph(name) {
   let directions = '';
   for (let i = lo; i <= hi; i++) {
     const deg = dir[i];
-    if (i % 6 === 0 && deg != null) directions += `<span title="${formatHour(i)} · ${compassFrom(deg)} ${Math.round(deg)}°">${windBarb(deg, wind[i])}</span>`;
+    if (i % 6 === 0 && deg != null) directions += `<span title="${formatHour(i)} · ${compassFrom(deg)} ${Math.round(deg)}°">${directionMarker(deg, wind[i])}</span>`;
   }
   el('gpDir').innerHTML = directions;
   el('gpName').textContent = s.name;
@@ -1213,7 +1260,7 @@ function setupGraphHover(s, lo, hi, x, yW, padL, plotW) {
     tip.innerHTML = `<b>${formatHour(i)}</b>`
       + `<span><i style="background:var(--wind)"></i>Wind <b>${r(wind)}</b> kt</span>`
       + `<span><i style="background:var(--gust)"></i>Gust <b>${r(gust)}</b> kt</span>`
-      + (deg != null ? `<span>${windBarb(deg, wind)} ${compassFrom(deg)} · ${Math.round(deg)}°</span>` : '')
+      + (deg != null ? `<span>${directionMarker(deg, wind)} ${compassFrom(deg)} · ${Math.round(deg)}°</span>` : '')
       + (temp != null ? `<span>${r(temp)} °C</span>` : '')
       + (precip > 0 ? `<span><i style="background:var(--precip)"></i>${r(precip, 1)} mm</span>` : '')
       + (mid ? `<span class="gp-tooltip-model" style="color:${modelColor(mid)}">${modelLabel(mid)}</span>` : '');
