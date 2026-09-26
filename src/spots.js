@@ -16,7 +16,9 @@ module.exports = [
   ] },
   { name: 'Lubiatowo',      lat: 54.811945, lon: 17.831954, dx:  12, dy:  12, place: 'N', nudge: [-70, 0], wg: 'https://www.windguru.cz/?gn=11102773' },
   { name: 'Dębki',          lat: 54.833919, lon: 18.071477, dx:  12, dy: -40, place: 'N', nudge: [-21, 0], wg: 'https://www.windguru.cz/?gn=11102775' },
-  { name: 'Jastrzębia Góra', lat: 54.835108, lon: 18.278059, dx:  12, dy:  12, wg: 'https://www.windguru.cz/1355758' },
+  { name: 'Jastrzębia Góra', lat: 54.835108, lon: 18.278059, dx:  12, dy:  12, wg: 'https://www.windguru.cz/1355758', externalLinks: [
+    { type: 'camera', label: 'Nadmorski24', location: 'Karwia beach', url: 'https://nadmorski24.pl/kamery/24-karwia-plaza-karwia', proximity: 'nearby' }
+  ] },
   { name: 'Puck',           lat: 54.724900, lon: 18.418000, dx: -118, dy: -40, wg: 'https://www.windguru.cz/48009', externalLinks: [
     { type: 'camera', label: 'Nadmorski24', location: 'Puck beach and pier', url: 'https://nadmorski24.pl/kamery/27-puck-plaza-przystan-molo-puck', proximity: 'direct' }
   ] },
