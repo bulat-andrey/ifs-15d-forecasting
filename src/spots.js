@@ -22,7 +22,7 @@ module.exports = [
   { name: 'Hel',            lat: 54.614701, lon: 18.777220, dx:  14, dy:   8, wg: 'https://www.windguru.cz/1355693', goodFrom: [[170, 330]] },
   { name: 'Rewa',           lat: 54.637600, lon: 18.515300, dx: -118, dy:   8, wg: 'https://www.windguru.cz/4165', goodFrom: [[221, 160]] },
   { name: 'Gdańsk Brzeźno', lat: 54.410596, lon: 18.635737, dx: -150, dy: -40, wg: 'https://www.windguru.cz/1355695', goodFrom: [[275, 102]] },
-  { name: 'Orle',           lat: 54.348843, lon: 18.876844, dx:  14, dy:  12, place: 'E', nudge: [-80, -45], wg: 'https://www.windguru.cz/1355696', goodFrom: [[240, 100]] },
+  { name: 'Orle',           lat: 54.348843, lon: 18.876844, dx:  14, dy:  12, place: 'E', nudge: [-80, -45], wg: 'https://www.windguru.cz/1355696', goodFrom: [[275, 100]] },
   { name: 'Jantar',         lat: 54.345340, lon: 19.038758, dx:  12, dy: -40, wg: null, goodFrom: [[269, 90]] },
   { name: 'Krynica Morska', lat: 54.388914, lon: 19.441715, dx: -150, dy: -40, place: 'SE', wg: 'https://www.windguru.cz/14473', goodFrom: [] }
 ];
