@@ -9,6 +9,7 @@ const windColor = s =>
   s < threshold + 20 ? WIND_COLORS[3] : s < threshold + 26 ? WIND_COLORS[4] : s < threshold + 33 ? WIND_COLORS[5] : WIND_COLORS[6];
 const ARROWS = ['↑','↗','→','↘','↓','↙','←','↖'];
 const COMPASS = ['N','NE','E','SE','S','SW','W','NW'];
+const DIRECTION_EDGE_TOLERANCE_DEG = 5;
 // Open-Meteo gives the meteorological direction wind comes FROM.
 // Labels keep that convention; arrows show where the air flows TO.
 const arrowToward = deg => ARROWS[Math.round(((deg + 180) % 360) / 45) % 8];
@@ -19,7 +20,9 @@ const inRange = (deg, a, b) => {
   const d = normDeg(deg), from = normDeg(a), to = normDeg(b);
   return from <= to ? d >= from && d <= to : d >= from || d <= to;
 };
-const directionOk = (spot, deg) => deg != null && (!spot.goodFrom || spot.goodFrom.some(([a, b]) => inRange(deg, a, b)));
+const directionOk = (spot, deg) => deg != null && (!spot.goodFrom || spot.goodFrom.some(([a, b]) =>
+  inRange(deg, a - DIRECTION_EDGE_TOLERANCE_DEG, b + DIRECTION_EDGE_TOLERANCE_DEG)
+));
 const directionStatus = (spot, deg) => directionOk(spot, deg) ? 'suitable direction' : 'offshore / cross-offshore';
 
 // Blend model provenance → colour/short-label for the graph band + legend.
@@ -160,6 +163,11 @@ function applyDirectionOverrides() {
 function directionRangeText(spot) {
   const ranges = spot.goodFrom || [];
   return rangeText(ranges);
+}
+
+function directionToRangeText(spot) {
+  const ranges = spot.goodFrom || [];
+  return rangeText(convertRanges(ranges));
 }
 
 function rangeText(ranges) {
@@ -450,6 +458,8 @@ function fillSelected(name, i) {
   const temp = r(s.hourly.temperature_2m[i]), precip = r(s.hourly.precipitation[i], 1);
   el('gpName').textContent = s.name;
   el('spotName').textContent = s.name;
+  el('spotDirRange').textContent = `Suitable FROM ${directionRangeText(s)}`;
+  el('spotDirRange').title = `Accepts ${DIRECTION_EDGE_TOLERANCE_DEG}° near edges. Same sector shown as wind blowing TO: ${directionToRangeText(s)}`;
   el('spotSpeed').textContent = speed;
   el('spotArrow').textContent = arrowToward(deg);
   el('spotArrow').style.background = windColor(speed);
@@ -566,7 +576,11 @@ function renderDirectionRose(ranges) {
 }
 
 function updateDirectionSummary(spot, displayRanges = displayedRangesForSpot(spot)) {
-  el('dirSummary').textContent = `${dirRoseInvert ? 'Editing wind TO' : 'Editing wind FROM'}: ${rangeText(displayRanges)} · saved FROM: ${directionRangeText(spot)}`;
+  const fromText = directionRangeText(spot);
+  const toText = directionToRangeText(spot);
+  el('dirSummary').textContent = dirRoseInvert
+    ? `Preview wind blowing TO: ${rangeText(displayRanges)} · app uses FROM: ${fromText} ±${DIRECTION_EDGE_TOLERANCE_DEG}°`
+    : `Editing wind FROM: ${rangeText(displayRanges)} ±${DIRECTION_EDGE_TOLERANCE_DEG}° · wind blows TO: ${toText}`;
 }
 
 function setupDirectionDrag() {
@@ -769,7 +783,7 @@ function renderSpotTable(name) {
     date,
     idxs: times.map((t, i) => t.startsWith(date) && isDaylight(i) ? i : -1).filter(i => i >= 0)
   })).filter(g => g.idxs.length);
-  const idxs = dayGroups.flatMap(g => g.idxs), n = idxs.length;
+  const idxs = dayGroups.flatMap(g => g.idxs);
   const modelLegend = (S.models && S.models.length ? S.models : []).map(m =>
     `<span><i style="background:${modelColor(m.id)}"></i>${m.short}</span>`
   ).join('');
@@ -792,7 +806,7 @@ function renderSpotTable(name) {
       modelCells += `<td class="${c} model-cell" title="${modelLabel(mid)}"><i style="background:${modelColor(mid)}"></i></td>`;
       windCells += `<td class="${c} wind-cell" title="${title}" style="background:${windColor(wind)}">${wind}</td>`;
       gustCells += `<td class="${c} gust-cell" title="${title}" style="background:${windColor(gust)}">${gust}</td>`;
-      dirCells += `<td class="${c} ${dirOk ? 'dir-good' : 'dir-bad'}" title="${compassFrom(deg)} · ${Math.round(deg)}° · ${directionStatus(s, deg)}">${arrowToward(deg)}</td>`;
+      dirCells += `<td class="${c} ${dirOk ? 'dir-good' : 'dir-bad'}" title="${compassFrom(deg)} · ${Math.round(deg)}° · ${directionStatus(s, deg)}"><span class="dir-arrow">${arrowToward(deg)}</span><span class="dir-deg">${Math.round(deg)}°</span></td>`;
       tempCells += `<td class="${c} temp-cell">${temp}</td>`;
       precipCells += `<td class="${c} precip-cell">${precip > 0 ? precip : '-'}</td>`;
     });
@@ -808,7 +822,7 @@ function renderSpotTable(name) {
       + `</table>`);
   }
   el('gpName').textContent = s.name;
-  el('gpSub').innerHTML = `${modelLegend}<span style="opacity:.7"> · ${n} daylight h · 2 days per row</span>`;
+  el('gpSub').innerHTML = modelLegend;
   el('spotTable').innerHTML = blockHtml.map(html => `<div class="spot-table-block">${html}</div>`).join('');
   requestAnimationFrame(() => {
     const active = el('spotTable').querySelector('td.active');
