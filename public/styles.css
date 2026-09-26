@@ -32,6 +32,7 @@ header { min-height: 66px; padding: 8px 20px; display: flex; align-items: center
 .wind-barb { width: 24px; height: 24px; display: inline-block; vertical-align: -6px; overflow: visible; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 .wind-barb g { transform: rotate(var(--barb-rot)); transform-origin: 16px 16px; transform-box: view-box; }
 .wind-barb .barb-fill, .wind-barb .barb-calm { fill: currentColor; stroke: currentColor; }
+.wind-barb-calm .barb-calm { fill: none; stroke-width: 3; }
 .spot-arrow .wind-barb { width: 23px; height: 23px; }
 .spot-kite { border-radius: 7px; padding: 5px 8px; color: #032518; background: var(--safe); font-weight: 850; }
 .spot-kite.no { background: var(--calm); color: #0a1521; }

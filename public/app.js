@@ -14,7 +14,12 @@ const DIRECTION_EDGE_TOLERANCE_DEG = 5;
 function windBarb(deg, speedKt) {
   if (deg == null) return '';
   const kt = Math.max(0, Math.round(Number(speedKt) || 0));
-  let rest = Math.round(kt / 5) * 5;
+  if (kt < 1) {
+    return `<svg class="wind-barb wind-barb-calm" viewBox="0 0 32 32" aria-hidden="true">`
+      + `<circle cx="16" cy="16" r="6" class="barb-calm"/>`
+      + `</svg>`;
+  }
+  let rest = kt < 5 ? 0 : Math.round(kt / 5) * 5;
   const pennants = Math.floor(rest / 50); rest -= pennants * 50;
   const full = Math.floor(rest / 10); rest -= full * 10;
   const half = rest >= 5 ? 1 : 0;
@@ -26,7 +31,6 @@ function windBarb(deg, speedKt) {
     marks += `<line x1="16" y1="${y}" x2="25" y2="${y + 4}"/>`;
   }
   if (half) marks += `<line x1="16" y1="${y}" x2="22" y2="${y + 3}"/>`;
-  if (!marks) marks = `<circle cx="16" cy="16" r="3.2" class="barb-calm"/>`;
   return `<svg class="wind-barb" viewBox="0 0 32 32" aria-hidden="true" style="--barb-rot:${normDeg(deg)}deg">`
     + `<g><line x1="16" y1="27" x2="16" y2="5"/>${marks}</g>`
     + `</svg>`;
