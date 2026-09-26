@@ -38,7 +38,18 @@ no backend database, no build step.
 
 ## Run locally
 
-Requires **Node.js ≥ 18** (uses built-in `fetch`). No `npm install` needed — there are no dependencies.
+With Docker Compose (no host Node.js installation):
+
+```bash
+docker compose up --build
+```
+
+Open http://127.0.0.1:8787. Changes under `public/` appear after a browser reload;
+changes under `src/` restart the Node development server. Stop it with
+`docker compose down`. The container only mounts `src/` and `public/`; `docs/local/`
+is excluded from the image build context.
+
+To run without Docker, use **Node.js ≥ 18** (built-in `fetch`). No `npm install` is needed — there are no dependencies.
 
 ```bash
 node src/server.js

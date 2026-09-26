@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Sultans Radar — kite forecast</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="/styles.css?v=viewport-fit-20260926" />
+  <link rel="stylesheet" href="/styles.css?v=live-conditions-fit-20260926" />
 </head>
 <body>
 <div class="app">
@@ -21,8 +21,11 @@
       <span>Temp <b id="spotTemp">–</b></span>
       <span>Precip <b id="spotPrecip">–</b></span>
       <span class="spot-kite" id="spotKite">–</span>
-      <a class="spot-wg" id="spotWg" target="_blank" rel="noopener noreferrer" aria-label="Open Windguru Pro forecast" title="Open Windguru Pro forecast"><img src="/windguru.jpg" alt="" /></a>
-      <button class="spot-settings" id="spotSettings" type="button" aria-label="Edit suitable wind direction" title="Edit suitable wind direction">⚙</button>
+      <span class="spot-links">
+        <a class="spot-wg" id="spotWg" target="_blank" rel="noopener noreferrer" aria-label="Open Windguru Pro forecast" title="Open Windguru Pro forecast"><img src="/windguru.jpg" alt="" /><span>Windguru ↗</span></a>
+        <button class="spot-live" id="spotLiveToggle" type="button" aria-controls="gpLivePanel" aria-expanded="false" hidden>Live</button>
+        <button class="spot-settings" id="spotSettings" type="button" aria-label="Edit suitable wind direction" title="Edit suitable wind direction">⚙</button>
+      </span>
     </div>
     <span class="updated" id="updated">loading…</span>
     <button class="control" id="modelBtn" title="Forecast model">ECMWF IFS 9 km</button>
@@ -78,7 +81,7 @@
     <section class="graph-panel" id="graphPanel" hidden>
       <button class="gp-close" id="gpClose" aria-label="Close graph">✕</button>
       <div class="gp-head">
-        <b id="gpName">—</b><span id="gpSub">15-day forecast · daylight shaded</span>
+        <div class="gp-heading"><b id="gpName">—</b><span id="gpSub">15-day forecast · daylight shaded</span></div>
         <span class="view-toggle" aria-label="Spot detail view">
           <button id="tableView" type="button" class="active">Table</button>
           <button id="graphView" type="button">Graph</button>
@@ -89,9 +92,17 @@
           <span><i style="background:var(--precip)"></i>precip</span>
         </span>
       </div>
-      <div id="spotTable" class="spot-table-wrap"></div>
-      <div class="gp-dir" id="gpDir" aria-label="Wind direction forecast" hidden></div>
-      <div id="graph" hidden></div>
+      <div class="gp-content">
+        <div class="gp-forecast" id="gpForecast">
+          <div id="spotTable" class="spot-table-wrap"></div>
+          <div class="gp-dir" id="gpDir" aria-label="Wind direction forecast" hidden></div>
+          <div id="graph" hidden></div>
+        </div>
+        <aside class="gp-live-panel" id="gpLivePanel" aria-label="Live conditions sources" hidden>
+          <div class="gp-live-head"><b>Live now</b></div>
+          <div id="gpLiveCards"></div>
+        </aside>
+      </div>
     </section>
   </main>
 
@@ -100,6 +111,6 @@
   </footer>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="/app.js?v=viewport-fit-20260926"></script>
+<script src="/app.js?v=live-conditions-fit-20260926"></script>
 </body>
 </html>
