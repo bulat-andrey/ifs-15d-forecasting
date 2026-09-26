@@ -85,6 +85,13 @@ async function boot() {
   el('prevSlot').onclick = () => stepTimeline(-1);
   el('nextSlot').onclick = () => stepTimeline(1);
   el('gpClose').onclick = clearSelection;
+  el('spotLiveToggle').onclick = toggleLiveConditions;
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !el('gpLivePanel').hidden) {
+      setLiveOpen(false);
+      el('spotLiveToggle').focus();
+    }
+  });
   update(curIdx);
   // Re-run label de-collision whenever the view changes (zoom changes disc spacing;
   // pan/resize change which labels would run off the edge).
@@ -377,7 +384,8 @@ function fillSelected(name, i) {
   const kite = el('spotKite'), day = isDaylight(i);
   const ok = speed >= threshold && day;
   kite.classList.toggle('no', !ok);
-  kite.textContent = ok ? 'Kiteable now' : speed < threshold ? `Below ${threshold} kt` : 'Dark — not daylight';
+  kite.textContent = ok ? 'Kiteable' : speed < threshold ? `Below ${threshold} kt` : 'Dark — not daylight';
+  kite.title = `Forecast for ${formatHour(i)}`;
   const wg = el('spotWg');
   if (s.wg) {
     wg.hidden = false; wg.removeAttribute('aria-disabled');
@@ -385,22 +393,98 @@ function fillSelected(name, i) {
     wg.setAttribute('aria-label', `Open Windguru Pro forecast for ${s.name}`);
     wg.title = `Open Windguru Pro forecast for ${s.name}`;
   } else {
-    wg.hidden = false; wg.removeAttribute('href');
-    wg.style.opacity = '.5'; wg.style.pointerEvents = 'none';
-    wg.setAttribute('aria-label', 'Windguru Pro link coming soon');
-    wg.title = 'Windguru Pro link coming soon';
+    wg.hidden = true; wg.removeAttribute('href');
   }
   el('spotSummary').hidden = false;
 }
 
+const LIVE_KINDS = {
+  camera: { label: 'Camera', icon: '▣' },
+  wind: { label: 'Wind reading', icon: '〰' },
+  observations: { label: 'Observations', icon: '◉' }
+};
+
+function renderLiveLinks(spot) {
+  const links = spot.externalLinks || [];
+  const toggle = el('spotLiveToggle');
+  const cards = el('gpLiveCards');
+  cards.replaceChildren();
+  toggle.hidden = links.length === 0;
+  toggle.textContent = `Live (${links.length})`;
+  toggle.setAttribute('aria-label', `Show ${links.length} live sources`);
+  if (!links.length) return;
+
+  for (const [proximity, heading] of [['direct', 'At this spot'], ['nearby', 'Nearby']]) {
+    const group = links.filter(link => link.proximity === proximity);
+    if (!group.length) continue;
+    const title = document.createElement('h3');
+    title.className = 'live-group-title';
+    title.textContent = heading;
+    cards.appendChild(title);
+    for (const link of group) {
+      const kind = LIVE_KINDS[link.type] || LIVE_KINDS.observations;
+      const card = document.createElement('a');
+      card.className = 'live-card';
+      card.href = link.url;
+      card.target = '_blank';
+      card.rel = 'noopener noreferrer';
+      card.setAttribute('aria-label', `Open ${kind.label.toLowerCase()} from ${link.label} at ${link.location} in a new tab`);
+      const icon = document.createElement('span');
+      icon.className = 'live-card-icon';
+      icon.setAttribute('aria-hidden', 'true');
+      icon.textContent = kind.icon;
+      const body = document.createElement('span');
+      body.className = 'live-card-body';
+      const type = document.createElement('span');
+      type.className = 'live-card-kind';
+      type.textContent = kind.label;
+      const provider = document.createElement('b');
+      provider.textContent = link.label;
+      const location = document.createElement('span');
+      location.className = 'live-card-place';
+      location.textContent = link.location;
+      body.append(type, provider, location);
+      const open = document.createElement('span');
+      open.className = 'live-card-open';
+      open.textContent = 'Open ↗';
+      card.append(icon, body, open);
+      cards.appendChild(card);
+    }
+  }
+}
+
+function setLiveOpen(open) {
+  const panel = el('gpLivePanel');
+  const toggle = el('spotLiveToggle');
+  panel.hidden = !open;
+  el('graphPanel').classList.toggle('live-open', open);
+  toggle.setAttribute('aria-expanded', String(open));
+  if (selName) {
+    const spot = S.spots.find(s => s.name === selName);
+    const count = (spot.externalLinks || []).length;
+    toggle.textContent = `Live (${count})`;
+    toggle.setAttribute('aria-label', open ? 'Show forecast' : `Show ${count} live sources`);
+  }
+}
+
+function toggleLiveConditions() {
+  const opening = el('gpLivePanel').hidden;
+  setLiveOpen(opening);
+  if (opening) el('gpLiveCards').querySelector('a')?.focus();
+}
+
 function selectSpot(name, showGraph = true) {
   selName = name;
+  const spot = S.spots.find(s => s.name === name);
+  renderLiveLinks(spot);
+  setLiveOpen(false);
   fillSelected(name, curIdx);
   drawMarkers(curIdx);
   if (showGraph) renderGraph(name); else el('graphPanel').hidden = true;
 }
 
 function clearSelection() {
+  setLiveOpen(false);
   selName = null;
   el('graphPanel').hidden = true;
   el('spotSummary').hidden = true;

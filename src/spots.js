@@ -8,18 +8,42 @@
 // nudge (optional): [dx, dy] extra pixel offset applied on top of `place`, for
 //     fine-tuning (e.g. [-70, 0] shifts the label 70px further left).
 // wg = Windguru Pro (Sultan Surfingu) page for the spot; null if not yet known.
+// externalLinks = provider pages for cameras/readings; nearby sources name their actual location.
+const maritime = 'https://www.umgdy.gov.pl/bezpieczenstwo-morskie/ruch-statkow/hydro-meteo/';
 module.exports = [
-  { name: 'Łeba',           lat: 54.766774, lon: 17.543355, dx:  12, dy: -40, place: 'W', wg: 'https://www.windguru.cz/3159' },
+  { name: 'Łeba',           lat: 54.766774, lon: 17.543355, dx:  12, dy: -40, place: 'W', wg: 'https://www.windguru.cz/3159', externalLinks: [
+    { type: 'camera', label: 'Fly Resort', location: 'Łeba west beach', url: 'https://flyresort.pl/leba/', proximity: 'direct' }
+  ] },
   { name: 'Lubiatowo',      lat: 54.811945, lon: 17.831954, dx:  12, dy:  12, place: 'N', nudge: [-70, 0], wg: 'https://www.windguru.cz/?gn=11102773' },
   { name: 'Dębki',          lat: 54.833919, lon: 18.071477, dx:  12, dy: -40, place: 'N', nudge: [-21, 0], wg: 'https://www.windguru.cz/?gn=11102775' },
   { name: 'Jastrzębia Góra', lat: 54.835108, lon: 18.278059, dx:  12, dy:  12, wg: 'https://www.windguru.cz/1355758' },
-  { name: 'Puck',           lat: 54.724900, lon: 18.418000, dx: -118, dy: -40, wg: 'https://www.windguru.cz/48009' },
-  { name: 'Jastarnia',      lat: 54.698500, lon: 18.663300, dx:  12, dy: -40, place: 'E', nudge: [-82, -45], wg: 'https://www.windguru.cz/1355694' },
-  { name: 'Jurata',         lat: 54.685884, lon: 18.721608, dx:  14, dy:   8, wg: 'https://www.windguru.cz/1355692' },
-  { name: 'Hel',            lat: 54.614701, lon: 18.777220, dx:  14, dy:   8, wg: 'https://www.windguru.cz/1355693' },
+  { name: 'Puck',           lat: 54.724900, lon: 18.418000, dx: -118, dy: -40, wg: 'https://www.windguru.cz/48009', externalLinks: [
+    { type: 'camera', label: 'Nadmorski24', location: 'Puck beach and pier', url: 'https://nadmorski24.pl/kamery/27-puck-plaza-przystan-molo-puck', proximity: 'direct' }
+  ] },
+  { name: 'Jastarnia',      lat: 54.698500, lon: 18.663300, dx:  12, dy: -40, place: 'E', nudge: [-82, -45], wg: 'https://www.windguru.cz/1355694', externalLinks: [
+    { type: 'observations', label: 'Maritime Office', location: 'Jastarnia station', url: maritime, proximity: 'direct' }
+  ] },
+  { name: 'Jurata',         lat: 54.685884, lon: 18.721608, dx:  14, dy:   8, wg: 'https://www.windguru.cz/1355692', externalLinks: [
+    { type: 'observations', label: 'Maritime Office', location: 'Jastarnia station', url: maritime, proximity: 'nearby' }
+  ] },
+  { name: 'Hel',            lat: 54.614701, lon: 18.777220, dx:  14, dy:   8, wg: 'https://www.windguru.cz/1355693', externalLinks: [
+    { type: 'camera', label: 'WebCamera.pl', location: 'Hel port and beach', url: 'https://hel.webcamera.pl/', proximity: 'direct' },
+    { type: 'observations', label: 'Maritime Office', location: 'Hel port and lighthouse', url: maritime, proximity: 'direct' }
+  ] },
   { name: 'Rewa',           lat: 54.637600, lon: 18.515300, dx: -118, dy:   8, wg: 'https://www.windguru.cz/4165' },
-  { name: 'Gdańsk Brzeźno', lat: 54.410596, lon: 18.635737, dx: -150, dy: -40, wg: 'https://www.windguru.cz/1355695' },
-  { name: 'Orle',           lat: 54.348843, lon: 18.876844, dx:  14, dy:  12, place: 'E', nudge: [-80, -45], wg: 'https://www.windguru.cz/1355696' },
+  { name: 'Gdańsk Brzeźno', lat: 54.410596, lon: 18.635737, dx: -150, dy: -40, wg: 'https://www.windguru.cz/1355695', externalLinks: [
+    { type: 'camera', label: 'WebCamera.pl', location: 'Brzeźno pier and beach', url: 'https://gdansk.webcamera.pl/', proximity: 'direct' },
+    { type: 'camera', label: 'Gdańsk city cameras', location: 'Brzeźno beach (camera index)', url: 'https://www.gdansk.pl/tv/kamery', proximity: 'direct' },
+    { type: 'wind', label: 'Autopay', location: 'Sopot marina', url: 'https://autopay.pl/pogoda', proximity: 'nearby' },
+    { type: 'wind', label: 'SKŻ Sopot', location: 'Sopot', url: 'https://skz.sopot.pl/pogoda', proximity: 'nearby' }
+  ] },
+  { name: 'Orle',           lat: 54.348843, lon: 18.876844, dx:  14, dy:  12, place: 'E', nudge: [-80, -45], wg: 'https://www.windguru.cz/1355696', externalLinks: [
+    { type: 'camera', label: 'TASK', location: 'NCŻ Górki Zachodnie', url: 'https://task.gda.pl/pl/multimedia/kamery/kamera-gdansk-ncz', proximity: 'nearby' },
+    { type: 'wind', label: 'Holfuy', location: 'NCŻ Górki Zachodnie', url: 'https://holfuy.com/en/weather/1441', proximity: 'nearby' }
+  ] },
   { name: 'Jantar',         lat: 54.345340, lon: 19.038758, dx:  12, dy: -40, wg: null },
-  { name: 'Krynica Morska', lat: 54.388914, lon: 19.441715, dx: -150, dy: -40, place: 'SE', wg: 'https://www.windguru.cz/14473' }
+  { name: 'Krynica Morska', lat: 54.388914, lon: 19.441715, dx: -150, dy: -40, place: 'SE', wg: 'https://www.windguru.cz/14473', externalLinks: [
+    { type: 'camera', label: 'Hotel Krynica', location: 'Krynica Morska', url: 'https://krynicahotel.pl/webcamera-3/', proximity: 'direct' },
+    { type: 'observations', label: 'Maritime Office', location: 'Krynica Morska lighthouse', url: maritime, proximity: 'direct' }
+  ] }
 ];
