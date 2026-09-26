@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Sultans Radar — kite forecast</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="/styles.css?v=feedback-links-20260926" />
+  <link rel="stylesheet" href="/styles.css?v=direction-degrees-20260926" />
 </head>
 <body>
 <div class="app">
@@ -15,6 +15,7 @@
     <div class="spot-summary" id="spotSummary" aria-live="polite" hidden>
       <span class="spot-arrow" id="spotArrow">·</span>
       <strong id="spotName">—</strong>
+      <span class="spot-range" id="spotDirRange">Suitable —</span>
       <b><span id="spotSpeed">–</span> kt</b>
       <span>Dir <b id="spotDirText">–</b></span>
       <span>Gusts <b id="spotGust">–</b></span>
@@ -71,7 +72,7 @@
       <div class="dir-head" id="dirDragHandle"><b id="dirSpotName">Spot</b><span>drag</span></div>
       <span id="dirSummary">Suitable wind direction</span>
       <div class="dir-rose" id="dirRose" aria-label="Suitable wind direction compass"></div>
-      <label class="dir-toggle"><input id="dirInvert" type="checkbox" checked /> Show where wind blows to</label>
+      <label class="dir-toggle"><input id="dirInvert" type="checkbox" checked /> Preview where wind blows to</label>
       <div class="dir-fields">
         <label>From <input id="dirFrom" type="number" min="0" max="359" step="1" /></label>
         <label>To <input id="dirTo" type="number" min="0" max="359" step="1" /></label>
@@ -116,6 +117,6 @@
   </footer>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="/app.js?v=feedback-links-20260926"></script>
+<script src="/app.js?v=direction-degrees-20260926"></script>
 </body>
 </html>
