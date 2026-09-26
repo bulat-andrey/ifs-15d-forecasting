@@ -393,7 +393,7 @@ function computeLabelPlacements(entries) {
 
 function drawMarkers(i) {
   const entries = markerObjs.map(({ s }, idx) => {
-    const speed = r(windAt(s, i)), gust = r(s.hourly.wind_gusts_10m[i]);
+    const speed = r(windAt(s, i), 1), gust = r(s.hourly.wind_gusts_10m[i]);
     const windLabel = `${speed} (${gust}) kt`;
     const pt = map.latLngToContainerPoint([s.lat, s.lon]);
     return { i: idx, s, speed, windLabel, w: labelWidth(s.name, windLabel), cx: pt.x, cy: pt.y, prefersLeft: s.dx < 0, place: s.place, nudge: s.nudge };
@@ -561,7 +561,7 @@ function onTimelineKey(e) {
 function fillSelected(name, i) {
   const s = S.spots.find(x => x.name === name);
   if (!s) return;
-  const speed = r(windAt(s, i)), gust = r(s.hourly.wind_gusts_10m[i]), deg = s.hourly.wind_direction_10m[i];
+  const speed = r(windAt(s, i), 1), statusSpeed = r(windAt(s, i)), gust = r(s.hourly.wind_gusts_10m[i]), deg = s.hourly.wind_direction_10m[i];
   const temp = r(s.hourly.temperature_2m[i]), precip = r(s.hourly.precipitation[i], 1);
   el('gpName').textContent = s.name;
   el('spotName').textContent = s.name;
@@ -577,9 +577,9 @@ function fillSelected(name, i) {
   el('spotTemp').textContent = temp + ' °C';
   el('spotPrecip').textContent = precip + ' mm';
   const kite = el('spotKite'), day = isDaylight(i), dirOk = directionOk(s, deg);
-  const ok = speed >= threshold && day && dirOk;
+  const ok = statusSpeed >= threshold && day && dirOk;
   kite.classList.toggle('no', !ok);
-  kite.textContent = ok ? 'Kiteable now' : speed < threshold ? `Below ${threshold} kt` : !day ? 'Dark — not daylight' : 'Offshore direction';
+  kite.textContent = ok ? 'Kiteable now' : statusSpeed < threshold ? `Below ${threshold} kt` : !day ? 'Dark — not daylight' : 'Offshore direction';
   kite.title = `Forecast for ${formatHour(i)}`;
   const wg = el('spotWg');
   if (s.wg) {
@@ -620,17 +620,17 @@ function renderMobileOverview() {
   });
   el('mobileTimeList').querySelector('.mobile-time-slot.active')?.scrollIntoView({ block: 'nearest' });
   el('mobileSpotList').innerHTML = S.spots.map(s => {
-    const speed = r(windAt(s, curIdx));
+    const speed = r(windAt(s, curIdx), 1), statusSpeed = r(windAt(s, curIdx));
     const gust = r(s.hourly.wind_gusts_10m[curIdx]);
     const deg = s.hourly.wind_direction_10m[curIdx];
     const temp = r(s.hourly.temperature_2m[curIdx]);
     const suitable = directionOk(s, deg);
-    const usable = speed >= threshold && isDaylight(curIdx) && suitable;
+    const usable = statusSpeed >= threshold && isDaylight(curIdx) && suitable;
     return `<button class="mobile-spot ${usable ? 'is-kiteable' : ''}" type="button" data-spot="${s.name}">`
       + `<span class="mobile-spot-main"><strong>${s.name}</strong></span>`
       + `<span class="mobile-spot-dir ${suitable ? 'dir-good' : 'dir-bad'}">${directionMarker(deg, speed)}<small>${Math.round(deg)}°</small></span>`
       + `<span class="mobile-spot-values"><b>${speed} (${gust}) kt</b><span>${temp}°</span></span>`
-      + `<span class="mobile-spot-status" aria-label="${usable ? 'Kiteable' : speed < threshold ? `Below ${threshold} knots` : suitable ? 'Limited' : 'Unsuitable direction'}">${usable ? '✓' : ''}</span>`
+      + `<span class="mobile-spot-status" aria-label="${usable ? 'Kiteable' : statusSpeed < threshold ? `Below ${threshold} knots` : suitable ? 'Limited' : 'Unsuitable direction'}">${usable ? '✓' : ''}</span>`
       + `</button>`;
   }).join('');
   el('mobileSpotList').querySelectorAll('[data-spot]').forEach(button => {
@@ -1019,7 +1019,7 @@ function renderSpotTable(name) {
       const t = times[i], prev = blockIdxs[pos - 1], dayStart = prev == null || times[prev].slice(0, 10) !== t.slice(0, 10);
       const dusk = isDuskUsable(i), dawn = isDawnUsable(i);
       const c = (i === activeIdx ? ' active' : '') + (dusk || dawn ? ' dusk' : ' daylight');
-      const wind = r(h.wind_speed_10m[i]), gust = r(h.wind_gusts_10m[i]), deg = h.wind_direction_10m[i];
+      const wind = r(h.wind_speed_10m[i], 1), gust = r(h.wind_gusts_10m[i]), deg = h.wind_direction_10m[i];
       const temp = r(h.temperature_2m[i]), precip = r(h.precipitation[i], 1);
       const mid = h.model && h.model[i];
       const twilightNote = dusk ? ' · dusk — limited light' : dawn ? ' · dawn — limited light' : '';
@@ -1314,7 +1314,7 @@ function setupGraphHover(s, lo, hi, x, yW, padL, plotW) {
     const deg = h.wind_direction_10m[i], temp = h.temperature_2m[i], precip = h.precipitation[i];
     const mid = h.model && h.model[i];
     tip.innerHTML = `<b>${formatHour(i)}</b>`
-      + `<span><i style="background:var(--wind)"></i>Wind <b>${r(wind)}</b> kt</span>`
+      + `<span><i style="background:var(--wind)"></i>Wind <b>${r(wind, 1)}</b> kt</span>`
       + `<span><i style="background:var(--gust)"></i>Gust <b>${r(gust)}</b> kt</span>`
       + (deg != null ? `<span>${directionMarker(deg, wind)} ${compassFrom(deg)} · ${Math.round(deg)}°</span>` : '')
       + (temp != null ? `<span>${r(temp)} °C</span>` : '')
