@@ -50,6 +50,9 @@ let t0 = 0;          // epoch of times[0], parsed as UTC for consistent indexing
 let curIdx = 0;
 let selName = null;
 let detailView = 'table';
+let graphStartIdx = 0;
+let graphEndIdx = 0;
+const MIN_GRAPH_RANGE_H = 6;
 let threshold = 12;
 let dirOverrides = {};
 let dirRoseInvert = true;
@@ -78,6 +81,9 @@ async function boot() {
   threshold = loadThreshold(S.threshold_kt || 12);
   times = S.spots[0].hourly.time;
   t0 = Date.parse(times[0] + ':00Z');
+  graphStartIdx = 0;
+  graphEndIdx = Math.max(0, times.length - 1);
+  setupGraphRangeControl();
   el('loading').hidden = true;
 
   const fmtModelTime = iso => new Date(iso).toLocaleString('en-GB', { timeZone: S.timezone || 'Europe/Warsaw', hour12: false, day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -104,6 +110,7 @@ async function boot() {
   el('prevSlot').onclick = () => stepTimeline(-1);
   el('nextSlot').onclick = () => stepTimeline(1);
   el('gpClose').onclick = clearSelection;
+  setupGraphPanelDrag();
   el('tableView').onclick = () => setDetailView('table');
   el('graphView').onclick = () => setDetailView('graph');
   el('spotSettings').onclick = openDirectionSettings;
@@ -345,6 +352,29 @@ function isDaylight(i) {
   if (d < 0) return false;
   return times[i] >= daily.sunrise[d] && times[i] <= daily.sunset[d];
 }
+
+// Extra hour around sunrise/sunset: often still enough ambient light for a short kite
+// session, even though it's outside astronomical daylight. Used only for the hourly
+// table view — "kiteable now" on the map and the daylight timeline stay strictly
+// sunrise–sunset.
+const DUSK_EXTRA_H = 1;
+const DAWN_EXTRA_H = 1;
+function shiftIso(iso, hours) {
+  return new Date(Date.parse(iso + ':00Z') + hours * 3_600_000).toISOString().slice(0, 16);
+}
+function isDuskUsable(i) {
+  const daily = S.spots[0].daily, date = times[i].slice(0, 10);
+  const d = daily.time.indexOf(date);
+  if (d < 0 || !daily.sunset[d]) return false;
+  return times[i] > daily.sunset[d] && times[i] <= shiftIso(daily.sunset[d], DUSK_EXTRA_H);
+}
+function isDawnUsable(i) {
+  const daily = S.spots[0].daily, date = times[i].slice(0, 10);
+  const d = daily.time.indexOf(date);
+  if (d < 0 || !daily.sunrise[d]) return false;
+  return times[i] >= shiftIso(daily.sunrise[d], -DAWN_EXTRA_H) && times[i] < daily.sunrise[d];
+}
+function isTableUsable(i) { return isDaylight(i) || isDuskUsable(i) || isDawnUsable(i); }
 
 function buildTimeline() {
   const daily = S.spots[0].daily, days = el('days');
@@ -753,11 +783,71 @@ function setDetailView(view) {
   renderSpotDetail(selName, view);
 }
 
+let graphRangeRenderFrame = null;
+function graphRangeLabel(i) {
+  return new Date(times[i] + ':00Z').toLocaleString('en-GB', {
+    weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+    hour12: false, timeZone: 'UTC'
+  }).replace(',', ' ·');
+}
+
+function updateGraphRangeUi() {
+  const max = Math.max(1, times.length - 1);
+  const start = el('graphStart'), end = el('graphEnd');
+  start.value = String(graphStartIdx);
+  end.value = String(graphEndIdx);
+  const startText = graphRangeLabel(graphStartIdx), endText = graphRangeLabel(graphEndIdx);
+  el('graphStartLabel').textContent = startText;
+  el('graphEndLabel').textContent = endText;
+  start.setAttribute('aria-valuetext', startText);
+  end.setAttribute('aria-valuetext', endText);
+  const left = graphStartIdx / max * 100;
+  const right = graphEndIdx / max * 100;
+  const fill = el('graphRangeFill');
+  fill.style.left = `${left}%`;
+  fill.style.width = `${Math.max(0, right - left)}%`;
+  el('graphRangeReset').disabled = graphStartIdx === 0 && graphEndIdx === times.length - 1;
+}
+
+function queueGraphRangeRender() {
+  if (graphRangeRenderFrame != null) cancelAnimationFrame(graphRangeRenderFrame);
+  graphRangeRenderFrame = requestAnimationFrame(() => {
+    graphRangeRenderFrame = null;
+    if (selName && detailView === 'graph') renderGraph(selName);
+  });
+}
+
+function setupGraphRangeControl() {
+  const start = el('graphStart'), end = el('graphEnd');
+  const max = Math.max(1, times.length - 1);
+  start.max = end.max = String(max);
+  start.value = String(graphStartIdx);
+  end.value = String(graphEndIdx);
+  start.oninput = () => {
+    graphStartIdx = Math.max(0, Math.min(Number(start.value), graphEndIdx - MIN_GRAPH_RANGE_H));
+    updateGraphRangeUi();
+    queueGraphRangeRender();
+  };
+  end.oninput = () => {
+    graphEndIdx = Math.min(times.length - 1, Math.max(Number(end.value), graphStartIdx + MIN_GRAPH_RANGE_H));
+    updateGraphRangeUi();
+    queueGraphRangeRender();
+  };
+  el('graphRangeReset').onclick = () => {
+    graphStartIdx = 0;
+    graphEndIdx = times.length - 1;
+    updateGraphRangeUi();
+    queueGraphRangeRender();
+  };
+  updateGraphRangeUi();
+}
+
 function renderSpotDetail(name, view = detailView) {
   detailView = view;
   el('tableView').classList.toggle('active', view === 'table');
   el('graphView').classList.toggle('active', view === 'graph');
   el('spotTable').hidden = view !== 'table';
+  el('gpRange').hidden = view !== 'graph';
   el('gpDir').hidden = view !== 'graph';
   el('graph').hidden = view !== 'graph';
   if (view === 'graph') renderGraph(name);
@@ -781,9 +871,11 @@ function renderSpotTable(name) {
   const h = s.hourly;
   const dayGroups = S.spots[0].daily.time.map(date => ({
     date,
-    idxs: times.map((t, i) => t.startsWith(date) && isDaylight(i) ? i : -1).filter(i => i >= 0)
+    idxs: times.map((t, i) => t.startsWith(date) && isTableUsable(i) ? i : -1).filter(i => i >= 0)
   })).filter(g => g.idxs.length);
-  const idxs = dayGroups.flatMap(g => g.idxs);
+  const idxs = dayGroups.flatMap(g => g.idxs), n = idxs.length;
+  const nDusk = idxs.filter(i => isDuskUsable(i)).length;
+  const nDawn = idxs.filter(i => isDawnUsable(i)).length;
   const modelLegend = (S.models && S.models.length ? S.models : []).map(m =>
     `<span><i style="background:${modelColor(m.id)}"></i>${m.short}</span>`
   ).join('');
@@ -795,11 +887,13 @@ function renderSpotTable(name) {
     let dayCells = '', timeCells = '', modelCells = '', windCells = '', gustCells = '', dirCells = '', tempCells = '', precipCells = '';
     blockIdxs.forEach((i, pos) => {
       const t = times[i], prev = blockIdxs[pos - 1], dayStart = prev == null || times[prev].slice(0, 10) !== t.slice(0, 10);
-      const c = (i === activeIdx ? ' active' : '') + ' daylight';
+      const dusk = isDuskUsable(i), dawn = isDawnUsable(i);
+      const c = (i === activeIdx ? ' active' : '') + (dusk || dawn ? ' dusk' : ' daylight');
       const wind = r(h.wind_speed_10m[i]), gust = r(h.wind_gusts_10m[i]), deg = h.wind_direction_10m[i];
       const temp = r(h.temperature_2m[i]), precip = r(h.precipitation[i], 1);
       const mid = h.model && h.model[i];
-      const title = `${formatHour(i)} · ${modelLabel(mid)}`;
+      const twilightNote = dusk ? ' · dusk — limited light' : dawn ? ' · dawn — limited light' : '';
+      const title = `${formatHour(i)} · ${modelLabel(mid)}${twilightNote}`;
       const dirOk = directionOk(s, deg);
       dayCells += `<td class="${c}" title="${title}">${dayStart ? dayName(t) : ''}</td>`;
       timeCells += `<td class="${c}" title="${title}">${t.slice(11, 13)}</td>`;
@@ -822,7 +916,9 @@ function renderSpotTable(name) {
       + `</table>`);
   }
   el('gpName').textContent = s.name;
-  el('gpSub').innerHTML = modelLegend;
+  const twilightParts = [nDawn ? `${nDawn} dawn` : '', nDusk ? `${nDusk} dusk` : ''].filter(Boolean).join(', ');
+  const twilightNote = twilightParts ? ` (+${twilightParts})` : '';
+  el('gpSub').innerHTML = `${modelLegend}<span style="opacity:.7"> · ${n - nDusk - nDawn} daylight h${twilightNote} · 2 days per row</span>`;
   el('spotTable').innerHTML = blockHtml.map(html => `<div class="spot-table-block">${html}</div>`).join('');
   requestAnimationFrame(() => {
     const active = el('spotTable').querySelector('td.active');
@@ -836,75 +932,277 @@ function renderGraph(name) {
   if (!s) return;
   const H = 260, W = 1000, padL = 34, padR = 30, padT = 12, padB = 22;
   const N = times.length, h = s.hourly;
-  const wind = h.wind_speed_10m, gust = h.wind_gusts_10m, dir = h.wind_direction_10m, precip = h.precipitation;
-  const wMax = Math.max(25, ...gust.filter(v => v != null)) * 1.1;
-  const pMax = Math.max(1, ...precip.filter(v => v != null));
-  const x = i => padL + (i / (N - 1)) * (W - padL - padR);
-  const yW = v => H - padB - (v / wMax) * (H - padT - padB);
-  const path = (arr, y) => 'M' + arr.map((v, i) => (v == null ? '' : `${x(i).toFixed(1)},${y(v).toFixed(1)}`)).filter(Boolean).join(' L');
+  const lo = Math.max(0, Math.min(graphStartIdx, N - 2));
+  const hi = Math.min(N - 1, Math.max(graphEndIdx, lo + 1));
+  graphStartIdx = lo;
+  graphEndIdx = hi;
+  updateGraphRangeUi();
 
-  // daylight shading per day
+  const wind = h.wind_speed_10m, gust = h.wind_gusts_10m, dir = h.wind_direction_10m, precip = h.precipitation;
+  const visibleGust = gust.slice(lo, hi + 1).filter(v => v != null);
+  const visiblePrecip = precip.slice(lo, hi + 1).filter(v => v != null);
+  const wMax = Math.max(25, ...visibleGust) * 1.1;
+  const pMax = Math.max(1, ...visiblePrecip);
+  const span = Math.max(1, hi - lo), plotW = W - padL - padR;
+  const x = i => padL + ((i - lo) / span) * plotW;
+  const yW = v => H - padB - (v / wMax) * (H - padT - padB);
+  const path = (arr, y) => {
+    let d = '', drawing = false;
+    for (let i = lo; i <= hi; i++) {
+      const v = arr[i];
+      if (v == null) { drawing = false; continue; }
+      d += `${drawing ? ' L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`;
+      drawing = true;
+    }
+    return d;
+  };
+
+  // Daylight shading, clipped to the selected time range.
   let shade = '';
   const daily = s.daily;
-  daily.time.forEach((date, d) => {
+  if (daily && daily.time) daily.time.forEach((date, d) => {
     if (!daily.sunrise[d] || !daily.sunset[d]) return;
-    const x1 = x(Math.max(0, toIdx(daily.sunrise[d]))), x2 = x(Math.min(N - 1, toIdx(daily.sunset[d])));
-    shade += `<rect x="${x1.toFixed(1)}" y="${padT}" width="${(x2 - x1).toFixed(1)}" height="${H - padT - padB}" fill="rgba(53,185,255,.06)"/>`;
+    const sr = toIdx(daily.sunrise[d]), ss = toIdx(daily.sunset[d]);
+    if (ss < lo || sr > hi) return;
+    const x1 = x(Math.max(lo, sr)), x2 = x(Math.min(hi, ss));
+    shade += `<rect x="${x1.toFixed(1)}" y="${padT}" width="${Math.max(0, x2 - x1).toFixed(1)}" height="${H - padT - padB}" fill="rgba(53,185,255,.06)"/>`;
   });
-  // day gridlines + weekday ticks at local midnight
-  let ticks = '';
-  daily.time.forEach(date => {
-    const xi = x(Math.max(0, toIdx(date + 'T00:00')));
+
+  // Hour gridlines every 2h (very faint), at the current wall-clock hour so a chosen
+  // even hour is a gridline regardless of where the zoomed range starts. Label as many
+  // of those gridlines as fit without crowding (every 2h when zoomed in), thinning to
+  // every 4th/8th/... gridline as the window widens and pixels per gridline shrink.
+  let hourTicks = '';
+  const pxPerGridline = (plotW / span) * 2; // 2 = gridline spacing in hours
+  // Smallest power-of-2 multiplier so each labeled gridline gets >=26px; closed-form
+  // (not a loop) so a degenerate pxPerGridline (0, tiny, or non-finite) can't hang.
+  let labelEveryNth = 1;
+  if (pxPerGridline > 0 && Number.isFinite(pxPerGridline) && pxPerGridline < 26) {
+    labelEveryNth = Math.min(64, 2 ** Math.ceil(Math.log2(26 / pxPerGridline)));
+  } else if (!Number.isFinite(pxPerGridline) || pxPerGridline <= 0) {
+    labelEveryNth = 64; // degenerate layout (e.g. zero-width panel) — label sparsely, never hang
+  }
+  let evenHourCount = 0;
+  for (let i = lo; i <= hi; i++) {
+    if (Number(times[i].slice(11, 13)) % 2 !== 0) continue;
+    const xi = x(i);
+    hourTicks += `<line x1="${xi.toFixed(1)}" y1="${padT}" x2="${xi.toFixed(1)}" y2="${H - padB}" stroke="rgba(160,200,220,.06)"/>`;
+    if (evenHourCount % labelEveryNth === 0) {
+      hourTicks += `<text x="${(xi + 2).toFixed(1)}" y="${padT + 9}" fill="#5f7d88" font-size="8">${times[i].slice(11, 13)}</text>`;
+    }
+    evenHourCount++;
+  }
+
+  // Day gridlines + labels at local midnight inside the selected range.
+  let ticks = '', firstTick = Infinity;
+  if (daily && daily.time) daily.time.forEach(date => {
+    const idx = toIdx(date + 'T00:00');
+    if (idx < lo || idx > hi) return;
+    firstTick = Math.min(firstTick, idx);
+    const xi = x(idx);
     const lbl = new Date(date + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', timeZone: 'UTC' });
     ticks += `<line x1="${xi.toFixed(1)}" y1="${padT}" x2="${xi.toFixed(1)}" y2="${H - padB}" stroke="rgba(160,200,220,.12)"/>`
       + `<text x="${(xi + 3).toFixed(1)}" y="${H - 8}" fill="#94a9bd" font-size="10">${lbl}</text>`;
   });
-  // precip bars
+  if (firstTick > lo + Math.max(3, span * .08)) {
+    ticks += `<text x="${padL + 3}" y="${H - 8}" fill="#94a9bd" font-size="10">${dayName(times[lo])}</text>`;
+  }
+
+  // Precipitation bars retain every hourly value in the visible range.
   let bars = '';
-  for (let i = 0; i < N; i++) { const v = precip[i]; if (v > 0) { const bh = (v / pMax) * 40; bars += `<rect x="${(x(i) - 1).toFixed(1)}" y="${(H - padB - bh).toFixed(1)}" width="2.4" height="${bh.toFixed(1)}" fill="var(--precip)" opacity=".8"/>`; } }
-  // threshold line
+  const barW = Math.max(1.5, Math.min(4, plotW / (span + 1) * .7));
+  for (let i = lo; i <= hi; i++) {
+    const v = precip[i];
+    if (v > 0) {
+      const bh = (v / pMax) * 40;
+      bars += `<rect x="${(x(i) - barW / 2).toFixed(1)}" y="${(H - padB - bh).toFixed(1)}" width="${barW.toFixed(1)}" height="${bh.toFixed(1)}" fill="var(--precip)" opacity=".8"/>`;
+    }
+  }
+
   const yThr = yW(threshold);
   const thr = `<line x1="${padL}" y1="${yThr.toFixed(1)}" x2="${W - padR}" y2="${yThr.toFixed(1)}" stroke="#f2bc35" stroke-dasharray="5 5" opacity=".8"/><text x="${W - padR}" y="${(yThr - 4).toFixed(1)}" fill="#f2bc35" font-size="10" text-anchor="end">${threshold} kt</text>`;
-  // wind axis labels
   let axis = '';
   [0, 10, 20, 30, 40].filter(v => v <= wMax).forEach(v => { axis += `<text x="4" y="${(yW(v) + 3).toFixed(1)}" fill="#5f7d88" font-size="9">${v}</text>`; });
 
-  // model provenance band along the very top + a faint seam divider where models hand off
+  // Model provenance band and handoff dividers, clipped to the selected range.
   let band = '', seams = '';
   const mv = h.model;
   if (mv && mv.length) {
-    let start = 0;
-    for (let i = 1; i <= N; i++) {
-      if (i === N || mv[i] !== mv[start]) {
+    let start = lo;
+    for (let i = lo + 1; i <= hi + 1; i++) {
+      if (i === hi + 1 || mv[i] !== mv[start]) {
         const id = mv[start];
-        if (id) band += `<rect x="${x(start).toFixed(1)}" y="2.5" width="${Math.max(0, x(i - 1) - x(start)).toFixed(1)}" height="5" fill="${modelColor(id)}" opacity=".92"><title>${modelShort(id)}</title></rect>`;
-        if (i < N) { // seam between mv[i-1] and mv[i]
-          const xi = x(i).toFixed(1);
-          seams += `<line x1="${xi}" y1="${padT}" x2="${xi}" y2="${H - padB}" stroke="${modelColor(mv[i])}" stroke-width="1" stroke-dasharray="3 4" opacity=".5"/>`
-            + `<text x="${(x(i) + 4).toFixed(1)}" y="${padT + 16}" fill="${modelColor(mv[i])}" font-size="9" opacity=".85">${modelShort(mv[i])}</text>`;
+        const left = start === lo ? padL : x(start - .5);
+        const right = i === hi + 1 ? W - padR : x(i - .5);
+        if (id) band += `<rect x="${left.toFixed(1)}" y="2.5" width="${Math.max(0, right - left).toFixed(1)}" height="5" fill="${modelColor(id)}" opacity=".92"><title>${modelShort(id)}</title></rect>`;
+        if (i <= hi) {
+          const xi = x(i - .5);
+          seams += `<line x1="${xi.toFixed(1)}" y1="${padT}" x2="${xi.toFixed(1)}" y2="${H - padB}" stroke="${modelColor(mv[i])}" stroke-width="1" stroke-dasharray="3 4" opacity=".5"/>`
+            + `<text x="${(xi + 4).toFixed(1)}" y="${padT + 16}" fill="${modelColor(mv[i])}" font-size="9" opacity=".85">${modelShort(mv[i])}</text>`;
         }
         start = i;
       }
     }
   }
 
-  const svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Forecast graph for ${s.name}">`
-    + shade + ticks + seams + bars + thr + axis + band
+  // Curves always retain every hourly value. Point markers expose model cadence:
+  // ICON-D2 every hour; ICON-EU and ECMWF at 00/03/06/... local forecast hours.
+  const showCadencePoint = i => {
+    const id = mv && mv[i];
+    if (id === 'icon_d2') return true;
+    return (id === 'icon_eu' || (id && id.startsWith('ecmwf'))) && Number(times[i].slice(11, 13)) % 3 === 0;
+  };
+  let points = '';
+  const pointR = Math.max(1.35, Math.min(2.3, plotW / (span + 1) * .22));
+  for (let i = lo; i <= hi; i++) {
+    if (!showCadencePoint(i)) continue;
+    const title = `${formatHour(i)} · ${modelLabel(mv[i])}`;
+    if (gust[i] != null) points += `<circle cx="${x(i).toFixed(1)}" cy="${yW(gust[i]).toFixed(1)}" r="${pointR.toFixed(2)}" fill="var(--gust)" stroke="#06101c" stroke-width=".55"><title>${title} · gust ${r(gust[i])} kt</title></circle>`;
+    if (wind[i] != null) points += `<circle cx="${x(i).toFixed(1)}" cy="${yW(wind[i]).toFixed(1)}" r="${pointR.toFixed(2)}" fill="var(--wind)" stroke="#06101c" stroke-width=".55"><title>${title} · wind ${r(wind[i])} kt</title></circle>`;
+  }
+
+  const svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Forecast graph for ${s.name}, ${graphRangeLabel(lo)} to ${graphRangeLabel(hi)}">`
+    + shade + hourTicks + ticks + seams + bars + thr + axis + band
     + `<path d="${path(gust, yW)}" fill="none" stroke="var(--gust)" stroke-width="1.6"/>`
     + `<path d="${path(wind, yW)}" fill="none" stroke="var(--wind)" stroke-width="2"/>`
+    + points
+    + `<g id="gpHover" opacity="0">`
+    + `<line id="gpHoverLine" x1="0" y1="${padT}" x2="0" y2="${H - padB}" stroke="#fff" stroke-width="1" stroke-dasharray="2 3" opacity=".65"/>`
+    + `<circle id="gpHoverWind" r="3.4" fill="var(--wind)" stroke="#fff" stroke-width="1"/>`
+    + `<circle id="gpHoverGust" r="3.4" fill="var(--gust)" stroke="#fff" stroke-width="1"/>`
+    + `</g>`
+    + `<rect id="gpHoverCapture" x="${padL}" y="${padT}" width="${plotW}" height="${H - padT - padB}" fill="transparent" style="cursor:crosshair"/>`
     + `</svg>`;
-  el('graph').innerHTML = svg;
-  el('gpDir').innerHTML = dir.map((deg, i) => i % 6 === 0
-    ? `<span title="${formatHour(i)} · ${compassFrom(deg)} ${Math.round(deg)}°">${arrowToward(deg)}</span>`
-    : ''
-  ).join('');
+  el('gpSvgHost').innerHTML = svg;
+  setupGraphHover(s, lo, hi, x, yW, padL, plotW);
+
+  let directions = '';
+  for (let i = lo; i <= hi; i++) {
+    const deg = dir[i];
+    if (i % 6 === 0 && deg != null) directions += `<span title="${formatHour(i)} · ${compassFrom(deg)} ${Math.round(deg)}°">${arrowToward(deg)}</span>`;
+  }
+  el('gpDir').innerHTML = directions;
   el('gpName').textContent = s.name;
-  const legendModels = (S.models && S.models.length) ? S.models : (S.blend || []).map(sh => ({ short: sh }));
+
+  const visibleModelIds = [...new Set((mv || []).slice(lo, hi + 1).filter(Boolean))];
+  const allModels = (S.models && S.models.length) ? S.models : (S.blend || []).map(sh => ({ short: sh }));
+  const legendModels = visibleModelIds.length ? visibleModelIds.map(id => allModels.find(m => m.id === id) || { id, short: modelShort(id) }) : allModels;
   const legend = legendModels
-    .map(m => `<span style="white-space:nowrap"><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${modelColor(m.id)};margin-right:4px;vertical-align:middle"></i>${m.short || m.id}</span>`)
-    .join('<span style="opacity:.45;margin:0 6px">→</span>');
-  el('gpSub').innerHTML = (legend || 'blended') + ` · ${times.length} h · daylight shaded · dashed = ${threshold} kt`;
+    .map(m => `<span><i style="background:${modelColor(m.id)}"></i>${m.short || m.id}</span>`)
+    .join('');
+  el('gpSub').innerHTML = (legend || 'blended') + `<span style="opacity:.7"> · ${span} h window · points: D2 1 h, EU/ECMWF 3 h</span>`;
   el('graphPanel').hidden = false;
+}
+
+// Draggable graph panel: drag by the header (gp-head), except its interactive
+// controls (buttons/toggles). The panel starts centered via left:50%+transform;
+// on first drag we pin it to an explicit left/top (in px) and drop the transform,
+// then keep it clamped inside the map viewport on every move and on window resize.
+function setupGraphPanelDrag() {
+  const panel = el('graphPanel'), handle = panel.querySelector('.gp-head'), heading = panel.querySelector('.gp-heading');
+  let drag = null;
+
+  const clamp = (val, max) => Math.max(0, Math.min(max, val));
+  const pinPosition = () => {
+    if (panel.dataset.pinned === '1') return;
+    const box = panel.getBoundingClientRect(), parent = panel.offsetParent.getBoundingClientRect();
+    panel.style.left = `${box.left - parent.left}px`;
+    panel.style.top = `${box.top - parent.top}px`;
+    panel.style.bottom = 'auto';
+    panel.style.transform = 'none';
+    panel.dataset.pinned = '1';
+  };
+
+  const onMove = e => {
+    if (!drag) return;
+    const parent = panel.offsetParent.getBoundingClientRect();
+    const nx = clamp(e.clientX - parent.left - drag.dx, parent.width - panel.offsetWidth);
+    const ny = clamp(e.clientY - parent.top - drag.dy, parent.height - panel.offsetHeight);
+    panel.style.left = `${nx}px`;
+    panel.style.top = `${ny}px`;
+  };
+  const onUp = () => {
+    drag = null;
+    handle.classList.remove('dragging');
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+  };
+
+  handle.addEventListener('mousedown', e => {
+    if (e.target.closest('button, .view-toggle, a')) return; // don't drag when clicking controls
+    e.preventDefault();
+    pinPosition();
+    const box = panel.getBoundingClientRect();
+    drag = { dx: e.clientX - box.left, dy: e.clientY - box.top };
+    handle.classList.add('dragging');
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+  handle.style.cursor = 'grab';
+  if (heading) heading.style.cursor = 'grab';
+
+  // Re-clamp into the viewport if the window is resized after the panel was moved.
+  window.addEventListener('resize', () => {
+    if (panel.dataset.pinned !== '1') return;
+    const parent = panel.offsetParent.getBoundingClientRect();
+    panel.style.left = `${clamp(parseFloat(panel.style.left) || 0, parent.width - panel.offsetWidth)}px`;
+    panel.style.top = `${clamp(parseFloat(panel.style.top) || 0, parent.height - panel.offsetHeight)}px`;
+  });
+}
+
+// Hover crosshair + tooltip for the graph. `x`/`yW` are the SVG-space scale functions
+// used for this render; `capture` is a transparent rect the same size as the plot area,
+// so pixel math accounts for the SVG stretching (preserveAspectRatio="none").
+function setupGraphHover(s, lo, hi, x, yW, padL, plotW) {
+  const svgEl = el('gpSvgHost').querySelector('svg');
+  const capture = el('gpHoverCapture'), group = el('gpHover'), tip = el('gpTooltip');
+  const hoverLine = el('gpHoverLine'), hoverWind = el('gpHoverWind'), hoverGust = el('gpHoverGust');
+  if (!svgEl || !capture) return;
+  const h = s.hourly;
+  const span = Math.max(1, hi - lo);
+
+  const idxFromClientX = clientX => {
+    const rect = svgEl.getBoundingClientRect();
+    const svgX = (clientX - rect.left) / rect.width * 1000; // viewBox width is fixed at 1000
+    const frac = (svgX - padL) / plotW;
+    return Math.round(lo + frac * span);
+  };
+
+  const showAt = (clientX, clientY) => {
+    const i = Math.max(lo, Math.min(hi, idxFromClientX(clientX)));
+    const wind = h.wind_speed_10m[i], gust = h.wind_gusts_10m[i];
+    if (wind == null && gust == null) { hide(); return; }
+    const xi = x(i);
+    hoverLine.setAttribute('x1', xi.toFixed(1));
+    hoverLine.setAttribute('x2', xi.toFixed(1));
+    group.setAttribute('opacity', '1');
+    if (wind != null) { hoverWind.style.display = ''; hoverWind.setAttribute('cx', xi.toFixed(1)); hoverWind.setAttribute('cy', yW(wind).toFixed(1)); }
+    else hoverWind.style.display = 'none';
+    if (gust != null) { hoverGust.style.display = ''; hoverGust.setAttribute('cx', xi.toFixed(1)); hoverGust.setAttribute('cy', yW(gust).toFixed(1)); }
+    else hoverGust.style.display = 'none';
+
+    const deg = h.wind_direction_10m[i], temp = h.temperature_2m[i], precip = h.precipitation[i];
+    const mid = h.model && h.model[i];
+    tip.innerHTML = `<b>${formatHour(i)}</b>`
+      + `<span><i style="background:var(--wind)"></i>Wind <b>${r(wind)}</b> kt</span>`
+      + `<span><i style="background:var(--gust)"></i>Gust <b>${r(gust)}</b> kt</span>`
+      + (deg != null ? `<span>${arrowToward(deg)} ${compassFrom(deg)} · ${Math.round(deg)}°</span>` : '')
+      + (temp != null ? `<span>${r(temp)} °C</span>` : '')
+      + (precip > 0 ? `<span><i style="background:var(--precip)"></i>${r(precip, 1)} mm</span>` : '')
+      + (mid ? `<span class="gp-tooltip-model" style="color:${modelColor(mid)}">${modelLabel(mid)}</span>` : '');
+    tip.hidden = false;
+    const graphBox = el('graph').getBoundingClientRect();
+    const left = Math.max(4, Math.min(graphBox.width - tip.offsetWidth - 4, clientX - graphBox.left + 12));
+    const top = Math.max(4, Math.min(graphBox.height - tip.offsetHeight - 4, clientY - graphBox.top - tip.offsetHeight - 12));
+    tip.style.left = `${left}px`;
+    tip.style.top = `${top}px`;
+  };
+  const hide = () => { group.setAttribute('opacity', '0'); tip.hidden = true; };
+
+  capture.onmousemove = e => showAt(e.clientX, e.clientY);
+  capture.onmouseleave = hide;
+  capture.ontouchstart = capture.ontouchmove = e => { if (e.touches[0]) { showAt(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); } };
+  capture.ontouchend = hide;
 }
 
 let timer = null;
