@@ -32,7 +32,7 @@ header { min-height: 66px; padding: 8px 20px; display: flex; align-items: center
 .spot-summary[hidden] { display: none; }
 .spot-summary b, .spot-summary strong { color: var(--text); }
 .spot-arrow { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; color: #07111c; font-size: 16px; font-weight: 900; background: var(--safe); flex: 0 0 auto; }
-.spot-arrow.dir-good { color: #39eaa0; box-shadow: 0 0 0 2px rgba(57,234,160,.75); text-shadow: 0 1px 2px rgba(0,0,0,.95), 0 0 4px rgba(0,0,0,.8); }
+.spot-arrow.dir-good { color: #05080c; box-shadow: 0 0 0 2px rgba(5,8,12,.72); text-shadow: none; }
 .spot-arrow.dir-bad { color: #ff9a8c; box-shadow: 0 0 0 2px rgba(255,154,140,.7); text-shadow: 0 1px 2px rgba(0,0,0,.95), 0 0 4px rgba(0,0,0,.8); }
 .wind-barb { width: 24px; height: 24px; display: inline-block; vertical-align: -6px; overflow: visible; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 .wind-barb g { transform: rotate(var(--barb-rot)); transform-origin: 16px 16px; transform-box: view-box; }
@@ -182,7 +182,8 @@ header { min-height: 66px; padding: 8px 20px; display: flex; align-items: center
 .spot-table .dir-row .dir-arrow { display: block; font-size: 15px; }
 .spot-table .dir-row .wind-barb, .spot-table .dir-row .wind-arrow { width: 21px; height: 21px; margin: -3px auto -2px; }
 .spot-table .dir-row .dir-deg { display: block; margin-top: 2px; font-size: 9px; font-weight: 800; color: rgba(244,248,251,.82); }
-.spot-table .dir-row td.dir-good { color: #39eaa0; background: rgba(37,216,138,.14); }
+.spot-table .dir-row td.dir-good { color: #05080c; background: rgba(37,216,138,.14); }
+.spot-table .dir-row td.dir-good .dir-deg { color: rgba(5,8,12,.78); }
 .spot-table .dir-row td.dir-bad { color: #ff9a8c; background: rgba(232,54,85,.2); }
 .spot-table .temp-cell { background: #f3cb44; color: #17202a; }
 .spot-table .precip-cell { color: #ffb08c; }
@@ -207,9 +208,9 @@ header { min-height: 66px; padding: 8px 20px; display: flex; align-items: center
 .pin .disc { position: absolute; width: 42px; height: 42px; border-radius: 50%; transform: translate(-50%, -50%); display: grid; place-items: center; color: #06101c; font-size: 21px; font-weight: 900; border: 3px solid rgba(255,255,255,.9); box-shadow: 0 3px 6px rgba(0,0,0,.5); cursor: pointer; }
 .pin .disc span { color: #06101c; }
 .pin .wind-barb, .pin .wind-arrow { width: 29px; height: 29px; }
-.pin .disc.dir-good { border-color: #39eaa0; box-shadow: 0 0 0 2px rgba(57,234,160,.28), 0 3px 6px rgba(0,0,0,.5); }
+.pin .disc.dir-good { border-color: #05080c; box-shadow: 0 0 0 2px rgba(5,8,12,.28), 0 3px 6px rgba(0,0,0,.5); }
 .pin .disc.dir-bad { border-color: #ff9a8c; box-shadow: 0 0 0 2px rgba(255,154,140,.22), 0 3px 6px rgba(0,0,0,.5); }
-.pin .disc.dir-good span { color: #39eaa0; text-shadow: 0 1px 2px rgba(0,0,0,.95), 0 0 4px rgba(0,0,0,.8); }
+.pin .disc.dir-good span { color: #05080c; text-shadow: none; }
 .pin .disc.dir-bad span { color: #ff9a8c; text-shadow: 0 1px 2px rgba(0,0,0,.95), 0 0 4px rgba(0,0,0,.8); }
 .pin .plabel { position: absolute; height: 30px; display: flex; align-items: center; gap: 6px; padding: 0 9px; background: rgba(6,16,28,.9); border: 1px solid #38546d; border-radius: 8px; white-space: nowrap; font-size: 13px; font-weight: 800; color: var(--text); pointer-events: none; }
 .pin.active .disc { border-color: #fff; box-shadow: 0 0 0 3px rgba(53,185,255,.55), 0 3px 6px rgba(0,0,0,.5); }
