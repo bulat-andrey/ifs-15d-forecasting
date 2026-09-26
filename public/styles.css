@@ -103,6 +103,8 @@ header { min-height: 66px; padding: 8px 20px; display: flex; align-items: center
 .map-model span { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
 .map-model b { font-weight: 800; }
 
+.mobile-board { display: none; }
+
 .eyebrow { color: var(--safe); font-size: 11px; font-weight: 850; text-transform: uppercase; letter-spacing: .11em; }
 
 .kiteable { border-radius: 9px; padding: 9px 10px; color: #032518; background: var(--safe); font-weight: 850; }
@@ -244,18 +246,47 @@ header { min-height: 66px; padding: 8px 20px; display: flex; align-items: center
 .loading[hidden] { display: none; }
 
 @media (max-width: 760px) {
-  header { height: auto; min-height: 66px; padding: 10px 12px; flex-wrap: wrap; }
+  header { height: auto; min-height: 58px; padding: 8px 10px; flex-wrap: nowrap; gap: 8px; }
+  .brand { font-size: 20px; }
+  .control { display: none; }
+  .time-now { margin-left: auto; font-size: 12px; }
+  .time-now b { font-size: 13px; }
   .updated { display: none; }
-  .time-now { margin-left: auto; }
-  .spot-summary { order: 3; width: 100%; gap: 8px; }
+  .spot-summary { display: none !important; }
+  .user-settings { margin-left: 0; }
+  .settings-panel { position: fixed; top: 58px; right: 8px; width: min(245px, calc(100vw - 16px)); }
   .map-shell, #map { min-height: 0; }
-  .map-legend { top: 162px; left: 12px; }
-  .map-attrib { right: 8px; bottom: 54px; max-width: calc(100% - 96px); font-size: 10px; }
-  .map-feedback { right: 8px; bottom: 82px; max-width: calc(100% - 96px); font-size: 10px; }
-  .map-transport { left: 12px; bottom: 40px; opacity: .82; }
-  .map-model { left: 12px; bottom: 6px; font-size: 11px; padding: 5px 8px; }
+  .mobile-board { position: absolute; inset: 0; z-index: 400; display: flex; flex-direction: column; overflow: auto; background: var(--page); padding: 10px 10px calc(18px + env(safe-area-inset-bottom)); }
+  .mobile-board-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 2px 10px; background: var(--page); }
+  .mobile-board-head > div { display: grid; gap: 2px; }
+  .mobile-board-head b { font-size: 15px; }
+  .mobile-board-head span { color: var(--muted); font-size: 11px; }
+  .mobile-map-toggle { min-height: 38px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--text); padding: 7px 12px; font-size: 12px; font-weight: 800; }
+  .mobile-overview { display: grid; grid-template-columns: 58px minmax(0, 1fr); align-items: start; gap: 8px; }
+  .mobile-time-rail { position: sticky; top: 58px; display: grid; justify-items: center; gap: 7px; padding: 9px 4px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--muted); }
+  .mobile-time-rail strong { color: var(--text); font-size: 15px; }
+  .mobile-time-rail span { font-size: 9px; line-height: 1.1; text-align: center; overflow-wrap: anywhere; }
+  .mobile-time-button { width: 40px; height: 38px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); color: var(--text); font-size: 25px; line-height: 1; }
+  .mobile-spot-list { display: grid; gap: 7px; min-width: 0; }
+  .mobile-spot { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'main dir' 'values status'; gap: 6px 8px; width: 100%; min-height: 76px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--text); text-align: left; }
+  .mobile-spot.is-kiteable { border-color: rgba(37,216,138,.62); }
+  .mobile-spot:active { background: var(--surface-2); }
+  .mobile-spot-main { grid-area: main; display: grid; min-width: 0; }
+  .mobile-spot-main strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
+  .mobile-spot-main small { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
+  .mobile-spot-dir { grid-area: dir; display: grid; justify-items: center; min-width: 35px; }
+  .mobile-spot-dir .wind-barb, .mobile-spot-dir .wind-arrow { width: 27px; height: 27px; }
+  .mobile-spot-dir small { font-size: 10px; font-weight: 800; }
+  .mobile-spot-values { grid-area: values; display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 11px; white-space: nowrap; }
+  .mobile-spot-values b { color: var(--text); }
+  .mobile-spot-status { grid-area: status; align-self: center; color: var(--muted); font-size: 10px; font-weight: 800; white-space: nowrap; }
+  .mobile-spot.is-kiteable .mobile-spot-status { color: var(--safe); }
+  #map, .map-legend, .map-attrib, .map-feedback, .map-transport, .map-model { display: none; }
+  .map-shell.mobile-map-open #map { display: block; }
+  .map-shell.mobile-map-open .mobile-board { display: none; }
+  .map-shell.mobile-map-open .map-transport, .map-shell.mobile-map-open .map-legend, .map-shell.mobile-map-open .map-attrib, .map-shell.mobile-map-open .map-feedback, .map-shell.mobile-map-open .map-model { display: initial; }
   .dir-settings { left: 8px; right: 8px; top: 8px; width: auto; transform: none; }
-  .graph-panel { left: 8px; right: 8px; bottom: 8px; width: auto; height: min(520px, calc(100% - 16px)); min-width: 0; min-height: 330px; max-width: none; transform: none; resize: vertical; }
+  .graph-panel { left: 0; right: 0; bottom: 0; width: auto; height: 100%; min-width: 0; min-height: 0; max-width: none; max-height: none; transform: none; resize: none; border-radius: 0; padding: 10px 10px calc(10px + env(safe-area-inset-bottom)); z-index: 700; }
   .graph-panel .gp-head { flex-wrap: wrap; }
   .graph-panel .gp-heading { width: 100%; }
   .graph-panel .gp-legend { margin-left: 0; }
@@ -268,8 +299,13 @@ header { min-height: 66px; padding: 8px 20px; display: flex; align-items: center
   .graph-panel.live-open .gp-forecast { display: none; }
   .gp-live-panel { flex: 1 1 auto; width: 100%; min-width: 0; border-left: 0; padding-left: 0; }
   .gp-dir { margin-right: 22px; font-size: 12px; }
-  .timeline { padding: 6px 10px 8px; }
+  .timeline { display: none; }
   .day { min-width: 98px; flex-basis: 98px; }
+  .spot-table-wrap { padding: 0; border: 0; background: transparent; }
+  .spot-table-block { min-width: 100%; margin-bottom: 8px; }
+  .spot-table th { position: sticky; left: 0; z-index: 2; }
+  .spot-table { font-size: 11px; }
+  .spot-table th, .spot-table td { min-width: 30px; width: 30px; }
 }
 
 @media (max-height: 900px) {
