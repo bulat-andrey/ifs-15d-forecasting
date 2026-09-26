@@ -473,15 +473,15 @@ function buildTimeline() {
     bar.className = 'daywind';
     bar.style.gridTemplateColumns = `repeat(${Math.max(1, idxs.length)}, minmax(6px, 1fr))`;
     idxs.forEach(i => {
-      const speed = Math.round(maxUsableWindAt(i));
+      const speed = maxUsableWindAt(i);
       const cell = document.createElement('button');
       cell.type = 'button';
       cell.className = 'hourcell';
       cell.dataset.idx = String(i);
       cell.dataset.time = times[i].slice(11, 16);
       cell.style.background = windColor(speed);
-      cell.title = `${formatHour(i)} · ${speed} kt`;
-      cell.setAttribute('aria-label', `${formatHour(i)}, ${speed} knots`);
+      cell.title = `${formatHour(i)} · ${r(speed, 1)} kt`;
+      cell.setAttribute('aria-label', `${formatHour(i)}, ${r(speed, 1)} knots`);
       cell.onclick = () => update(i, true);
       bar.appendChild(cell);
     });
