@@ -48,7 +48,7 @@ module.exports = [
     { type: 'wind', label: 'Holfuy', location: 'NCŻ Górki Zachodnie', url: 'https://holfuy.com/en/weather/1441', proximity: 'nearby' }
   ] },
   { name: 'Jantar',         lat: 54.345340, lon: 19.038758, dx:  12, dy: -40, wg: null, goodFrom: [[269, 90]] },
-  { name: 'Krynica Morska', lat: 54.388914, lon: 19.441715, dx: -150, dy: -40, place: 'SE', wg: 'https://www.windguru.cz/14473', goodFrom: [], externalLinks: [
+  { name: 'Krynica Morska', lat: 54.388914, lon: 19.441715, dx: -150, dy: -40, place: 'SE', wg: 'https://www.windguru.cz/14473', goodFrom: [[0, 359]], externalLinks: [
     { type: 'camera', label: 'Hotel Krynica', location: 'Krynica Morska', url: 'https://krynicahotel.pl/webcamera-3/', proximity: 'direct' },
     { type: 'observations', label: 'Maritime Office', location: 'Krynica Morska lighthouse', url: maritime, proximity: 'direct' }
   ] }
