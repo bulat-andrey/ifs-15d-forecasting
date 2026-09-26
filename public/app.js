@@ -602,18 +602,23 @@ function renderMobileOverview() {
   el('mobileBoardDate').textContent = dateText;
   el('mobileTime').textContent = times[curIdx].slice(11, 16);
   el('mobileTimeZone').textContent = S.timezone || 'local';
-  const dayIndexes = times.map((t, i) => t.startsWith(date) && isTableUsable(i) ? i : -1).filter(i => i >= 0);
-  el('mobileTimeList').innerHTML = dayIndexes.map(i => {
-    const good = S.spots.some(s => {
-      const speed = r(windAt(s, i)), deg = s.hourly.wind_direction_10m[i];
-      return speed >= threshold && isDaylight(i) && directionOk(s, deg);
-    });
-    const active = i === curIdx ? ' active' : '';
-    return `<button class="mobile-time-slot${good ? ' good' : ''}${active ? active : ''}" type="button" data-time-idx="${i}" aria-label="${formatHour(i)}${good ? ', kiteable period' : ''}">${times[i].slice(11, 13)}</button>`;
+  el('mobileTimeList').innerHTML = S.spots[0].daily.time.map(day => {
+    const dayIndexes = times.map((t, i) => t.startsWith(day) && isTableUsable(i) ? i : -1).filter(i => i >= 0);
+    if (!dayIndexes.length) return '';
+    const slots = dayIndexes.map(i => {
+      const good = S.spots.some(s => {
+        const speed = r(windAt(s, i)), deg = s.hourly.wind_direction_10m[i];
+        return speed >= threshold && isDaylight(i) && directionOk(s, deg);
+      });
+      const active = i === curIdx ? ' active' : '';
+      return `<button class="mobile-time-slot${good ? ' good' : ''}${active}" type="button" data-time-idx="${i}" aria-label="${formatHour(i)}${good ? ', kiteable period' : ''}">${times[i].slice(11, 13)}</button>`;
+    }).join('');
+    return `<div class="mobile-time-day"><b>${dayName(day)}</b>${slots}</div>`;
   }).join('');
   el('mobileTimeList').querySelectorAll('[data-time-idx]').forEach(button => {
     button.onclick = () => update(Number(button.dataset.timeIdx), true);
   });
+  el('mobileTimeList').querySelector('.mobile-time-slot.active')?.scrollIntoView({ block: 'nearest' });
   el('mobileSpotList').innerHTML = S.spots.map(s => {
     const speed = r(windAt(s, curIdx));
     const gust = r(s.hourly.wind_gusts_10m[curIdx]);
