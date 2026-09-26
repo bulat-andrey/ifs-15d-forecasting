@@ -461,11 +461,12 @@ function buildTimeline() {
     const idxs = times.map((t, i) => t.startsWith(date) && isDaylight(i) ? i : -1).filter(i => i >= 0);
     timelineIdxs.push(...idxs);
     const daylightWinds = idxs.map(maxUsableWindAt);
-    const hi = daylightWinds.length ? Math.round(Math.max(...daylightWinds)) : 0;
+    const hiRaw = daylightWinds.length ? Math.max(...daylightWinds) : 0;
+    const hi = Math.round(hiRaw);
     const lo = daylightWinds.length ? Math.round(Math.min(...daylightWinds)) : 0;
     const day = document.createElement('div');
     const weekday = new Date(date + 'T12:00:00Z').getUTCDay();
-    day.className = 'day ' + (hi >= threshold ? 'kite ' : '') + (weekday === 0 || weekday === 6 ? 'weekend ' : '');
+    day.className = 'day ' + (hiRaw >= threshold ? 'kite ' : '') + (weekday === 0 || weekday === 6 ? 'weekend ' : '');
     day.dataset.day = String(d);
 
     const bar = document.createElement('div');
@@ -561,7 +562,7 @@ function onTimelineKey(e) {
 function fillSelected(name, i) {
   const s = S.spots.find(x => x.name === name);
   if (!s) return;
-  const speed = r(windAt(s, i), 1), statusSpeed = r(windAt(s, i)), gust = r(s.hourly.wind_gusts_10m[i]), deg = s.hourly.wind_direction_10m[i];
+  const windKt = windAt(s, i), speed = r(windKt, 1), statusSpeed = windKt, gust = r(s.hourly.wind_gusts_10m[i]), deg = s.hourly.wind_direction_10m[i];
   const temp = r(s.hourly.temperature_2m[i]), precip = r(s.hourly.precipitation[i], 1);
   el('gpName').textContent = s.name;
   el('spotName').textContent = s.name;
@@ -607,7 +608,7 @@ function renderMobileOverview() {
     if (!dayIndexes.length) return '';
     const slots = dayIndexes.map(i => {
       const good = S.spots.some(s => {
-        const speed = r(windAt(s, i)), deg = s.hourly.wind_direction_10m[i];
+        const speed = windAt(s, i), deg = s.hourly.wind_direction_10m[i];
         return speed >= threshold && isDaylight(i) && directionOk(s, deg);
       });
       const active = i === curIdx ? ' active' : '';
@@ -620,7 +621,7 @@ function renderMobileOverview() {
   });
   el('mobileTimeList').querySelector('.mobile-time-slot.active')?.scrollIntoView({ block: 'nearest' });
   el('mobileSpotList').innerHTML = S.spots.map(s => {
-    const speed = r(windAt(s, curIdx), 1), statusSpeed = r(windAt(s, curIdx));
+    const windKt = windAt(s, curIdx), speed = r(windKt, 1), statusSpeed = windKt;
     const gust = r(s.hourly.wind_gusts_10m[curIdx]);
     const deg = s.hourly.wind_direction_10m[curIdx];
     const temp = r(s.hourly.temperature_2m[curIdx]);
