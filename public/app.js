@@ -38,7 +38,7 @@ function windBarb(deg, speedKt) {
 
 function windArrow(deg) {
   if (deg == null) return '';
-  return `<svg class="wind-arrow" viewBox="0 0 32 32" aria-hidden="true" style="--arrow-rot:${normDeg(deg)}deg">`
+  return `<svg class="wind-arrow" viewBox="0 0 32 32" aria-hidden="true" style="--arrow-rot:${normDeg(deg + 180)}deg">`
     + `<g><line x1="16" y1="27" x2="16" y2="8"/><path d="M16 5 L10 13 L22 13 Z"/></g>`
     + `</svg>`;
 }
