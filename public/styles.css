@@ -54,6 +54,10 @@ header { min-height: 66px; padding: 8px 20px; display: flex; align-items: center
 .map-legend i { width: 12px; height: 10px; border-radius: 2px; flex: 0 0 auto; }
 .map-attrib { position: absolute; right: 10px; bottom: 24px; z-index: 620; padding: 3px 6px; border-radius: 6px; background: rgba(6,16,28,.72); color: #c3d7e8; font-size: 11px; }
 .map-attrib a { color: #c3d7e8; }
+.map-feedback { position: absolute; right: 10px; bottom: 50px; z-index: 620; display: inline-flex; align-items: center; gap: 6px; padding: 4px 7px; border: 1px solid rgba(41,65,88,.8); border-radius: 8px; background: rgba(6,16,28,.72); color: #c3d7e8; font-size: 11px; }
+.map-feedback span { color: var(--muted); font-weight: 800; }
+.map-feedback a { color: var(--accent); text-decoration: none; font-weight: 800; }
+.map-feedback a:hover, .map-feedback a:focus-visible { text-decoration: underline; }
 .dir-settings { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 680; width: min(410px, calc(100% - 32px)); display: grid; gap: 7px; padding: 11px; border: 1px solid var(--line); border-radius: 12px; background: rgba(6,16,28,.75); box-shadow: 0 12px 28px rgba(0,0,0,.42); color: var(--text); }
 .dir-settings[hidden] { display: none; }
 .dir-head { display: flex; align-items: center; gap: 8px; cursor: move; user-select: none; touch-action: none; padding-right: 28px; }
@@ -198,6 +202,7 @@ header { min-height: 66px; padding: 8px 20px; display: flex; align-items: center
   .map-shell, #map { min-height: 0; }
   .map-legend { top: 162px; left: 12px; }
   .map-attrib { right: 8px; bottom: 54px; max-width: calc(100% - 96px); font-size: 10px; }
+  .map-feedback { right: 8px; bottom: 82px; max-width: calc(100% - 96px); font-size: 10px; }
   .map-transport { left: 12px; bottom: 40px; opacity: .82; }
   .map-model { left: 12px; bottom: 6px; font-size: 11px; padding: 5px 8px; }
   .dir-settings { left: 8px; right: 8px; top: 8px; width: auto; transform: none; }

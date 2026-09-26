@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Sultans Radar — kite forecast</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="/styles.css?v=live-conditions-fit-20260926" />
+  <link rel="stylesheet" href="/styles.css?v=feedback-links-20260926" />
 </head>
 <body>
 <div class="app">
@@ -60,6 +60,11 @@
       <span><i style="background:#a855f7"></i><b id="leg6">45+</b></span>
     </div>
     <div class="map-model" id="mapModel" hidden aria-live="polite"></div>
+    <div class="map-feedback" aria-label="Feedback links">
+      <span>Feedback</span>
+      <a href="https://github.com/bulat-andrey/ifs-15d-forecasting/issues/new?labels=bug&title=Bug%3A%20&body=What%20happened%3F%0A%0AWhat%20did%20you%20expect%3F%0A%0AScreenshot%20or%20forecast%20time%2Fspot%3A%0A" target="_blank" rel="noopener noreferrer">Bug</a>
+      <a href="https://github.com/bulat-andrey/ifs-15d-forecasting/issues/new?labels=enhancement&title=Feature%3A%20&body=What%20would%20you%20like%20Sultans%20Radar%20to%20do%3F%0A%0AWhy%20would%20it%20help%3F%0A" target="_blank" rel="noopener noreferrer">Feature</a>
+    </div>
     <div class="map-attrib">Weather data by <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> (CC BY 4.0) · ICON/ECMWF</div>
     <section class="dir-settings" id="dirSettings" hidden>
       <button class="dir-close" id="dirClose" type="button" aria-label="Close direction settings">✕</button>
@@ -111,6 +116,6 @@
   </footer>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="/app.js?v=live-conditions-fit-20260926"></script>
+<script src="/app.js?v=feedback-links-20260926"></script>
 </body>
 </html>
