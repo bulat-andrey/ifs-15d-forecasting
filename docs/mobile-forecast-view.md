@@ -10,6 +10,8 @@ Make the phone experience a fast forecast overview instead of a compressed map. 
 
 - [x] Create a dedicated feature branch.
 - [x] Add a mobile overview with a time rail and spot list.
+- [x] Compact spots into a two-column grid with combined wind/gust values.
+- [x] Mark kiteable hours green in the vertical day timeline.
 - [x] Open the selected spot in the existing detail panel.
 - [x] Render one forecast day per table block for easier vertical browsing.
 - [x] Add mobile touch sizing and full-screen detail layout.
