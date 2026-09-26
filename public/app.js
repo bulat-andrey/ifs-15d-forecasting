@@ -874,6 +874,8 @@ function renderSpotTable(name) {
     idxs: times.map((t, i) => t.startsWith(date) && isTableUsable(i) ? i : -1).filter(i => i >= 0)
   })).filter(g => g.idxs.length);
   const idxs = dayGroups.flatMap(g => g.idxs);
+  const nDusk = idxs.filter(i => isDuskUsable(i)).length;
+  const nDawn = idxs.filter(i => isDawnUsable(i)).length;
   const modelLegend = (S.models && S.models.length ? S.models : []).map(m =>
     `<span><i style="background:${modelColor(m.id)}"></i>${m.short}</span>`
   ).join('');
@@ -914,7 +916,9 @@ function renderSpotTable(name) {
       + `</table>`);
   }
   el('gpName').textContent = s.name;
-  el('gpSub').innerHTML = modelLegend;
+  const twilightParts = [nDawn ? `${nDawn} dawn` : '', nDusk ? `${nDusk} dusk` : ''].filter(Boolean).join(', ');
+  const twilightNote = twilightParts ? `<span style="opacity:.7">+${twilightParts}</span>` : '';
+  el('gpSub').innerHTML = `${modelLegend}${twilightNote}`;
   el('spotTable').innerHTML = blockHtml.map(html => `<div class="spot-table-block">${html}</div>`).join('');
   requestAnimationFrame(() => {
     const active = el('spotTable').querySelector('td.active');
