@@ -262,24 +262,28 @@ header { min-height: 66px; padding: 8px 20px; display: flex; align-items: center
   .mobile-board-head b { font-size: 15px; }
   .mobile-board-head span { color: var(--muted); font-size: 11px; }
   .mobile-map-toggle { min-height: 38px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--text); padding: 7px 12px; font-size: 12px; font-weight: 800; }
-  .mobile-overview { display: grid; grid-template-columns: 58px minmax(0, 1fr); align-items: start; gap: 8px; }
-  .mobile-time-rail { position: sticky; top: 58px; display: grid; justify-items: center; gap: 7px; padding: 9px 4px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--muted); }
-  .mobile-time-rail strong { color: var(--text); font-size: 15px; }
-  .mobile-time-rail span { font-size: 9px; line-height: 1.1; text-align: center; overflow-wrap: anywhere; }
-  .mobile-time-button { width: 40px; height: 38px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); color: var(--text); font-size: 25px; line-height: 1; }
-  .mobile-spot-list { display: grid; gap: 7px; min-width: 0; }
-  .mobile-spot { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'main dir' 'values status'; gap: 6px 8px; width: 100%; min-height: 76px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--text); text-align: left; }
+  .mobile-overview { display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: start; gap: 7px; }
+  .mobile-time-rail { position: sticky; top: 58px; display: grid; gap: 7px; padding: 7px 3px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--muted); }
+  .mobile-time-current { display: grid; justify-items: center; gap: 2px; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
+  .mobile-time-current strong { color: var(--text); font-size: 13px; }
+  .mobile-time-current span { font-size: 8px; line-height: 1.1; text-align: center; overflow-wrap: anywhere; }
+  .mobile-time-list { display: grid; gap: 3px; max-height: calc(100dvh - 210px); overflow-y: auto; scrollbar-width: thin; }
+  .mobile-time-slot { position: relative; width: 40px; min-height: 29px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--muted); font-size: 10px; font-weight: 800; }
+  .mobile-time-slot.good { border-color: rgba(37,216,138,.7); background: rgba(37,216,138,.28); color: #042719; }
+  .mobile-time-slot.active { outline: 2px solid var(--accent); outline-offset: -2px; color: var(--text); }
+  .mobile-time-slot.good.active { color: #042719; }
+  .mobile-spot-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; min-width: 0; }
+  .mobile-spot { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'main dir' 'values status'; gap: 4px 5px; width: 100%; min-height: 69px; padding: 7px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); text-align: left; }
   .mobile-spot.is-kiteable { border-color: rgba(37,216,138,.62); }
   .mobile-spot:active { background: var(--surface-2); }
   .mobile-spot-main { grid-area: main; display: grid; min-width: 0; }
-  .mobile-spot-main strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
-  .mobile-spot-main small { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
-  .mobile-spot-dir { grid-area: dir; display: grid; justify-items: center; min-width: 35px; }
-  .mobile-spot-dir .wind-barb, .mobile-spot-dir .wind-arrow { width: 27px; height: 27px; }
-  .mobile-spot-dir small { font-size: 10px; font-weight: 800; }
-  .mobile-spot-values { grid-area: values; display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 11px; white-space: nowrap; }
+  .mobile-spot-main strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+  .mobile-spot-dir { grid-area: dir; display: grid; justify-items: center; min-width: 27px; }
+  .mobile-spot-dir .wind-barb, .mobile-spot-dir .wind-arrow { width: 23px; height: 23px; }
+  .mobile-spot-dir small { font-size: 9px; font-weight: 800; }
+  .mobile-spot-values { grid-area: values; display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 9px; white-space: nowrap; }
   .mobile-spot-values b { color: var(--text); }
-  .mobile-spot-status { grid-area: status; align-self: center; color: var(--muted); font-size: 10px; font-weight: 800; white-space: nowrap; }
+  .mobile-spot-status { grid-area: status; align-self: center; color: var(--safe); font-size: 14px; font-weight: 900; white-space: nowrap; }
   .mobile-spot.is-kiteable .mobile-spot-status { color: var(--safe); }
   #map, .map-legend, .map-attrib, .map-feedback, .map-transport, .map-model { display: none; }
   .map-shell.mobile-map-open #map { display: block; }

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Sultans Radar — kite forecast</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="/styles.css?v=mobile-forecast-20260926" />
+  <link rel="stylesheet" href="/styles.css?v=mobile-grid-timeline-20260926" />
 </head>
 <body>
 <div class="app">
@@ -66,10 +66,8 @@
       </div>
       <div class="mobile-overview">
         <aside class="mobile-time-rail" aria-label="Forecast time">
-          <button class="mobile-time-button" id="mobilePrevSlot" type="button" aria-label="Previous forecast period">‹</button>
-          <strong id="mobileTime">—</strong>
-          <span id="mobileTimeZone">local</span>
-          <button class="mobile-time-button" id="mobileNextSlot" type="button" aria-label="Next forecast period">›</button>
+          <div class="mobile-time-current"><strong id="mobileTime">—</strong><span id="mobileTimeZone">local</span></div>
+          <div class="mobile-time-list" id="mobileTimeList" aria-label="Hours for selected day"></div>
         </aside>
         <div class="mobile-spot-list" id="mobileSpotList" aria-label="Forecast by spot"></div>
       </div>
@@ -160,6 +158,6 @@
   </footer>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="/app.js?v=mobile-forecast-20260926"></script>
+<script src="/app.js?v=mobile-grid-timeline-20260926"></script>
 </body>
 </html>

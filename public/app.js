@@ -150,8 +150,6 @@ async function boot() {
   el('play').onclick = togglePlay;
   el('prevSlot').onclick = () => stepTimeline(-1);
   el('nextSlot').onclick = () => stepTimeline(1);
-  el('mobilePrevSlot').onclick = () => stepTimeline(-1);
-  el('mobileNextSlot').onclick = () => stepTimeline(1);
   el('mobileMapToggle').onclick = toggleMobileMap;
   el('gpClose').onclick = clearSelection;
   setupGraphPanelDrag();
@@ -604,6 +602,18 @@ function renderMobileOverview() {
   el('mobileBoardDate').textContent = dateText;
   el('mobileTime').textContent = times[curIdx].slice(11, 16);
   el('mobileTimeZone').textContent = S.timezone || 'local';
+  const dayIndexes = times.map((t, i) => t.startsWith(date) && isTableUsable(i) ? i : -1).filter(i => i >= 0);
+  el('mobileTimeList').innerHTML = dayIndexes.map(i => {
+    const good = S.spots.some(s => {
+      const speed = windAt(s, i), deg = s.hourly.wind_direction_10m[i];
+      return speed >= threshold && isDaylight(i) && directionOk(s, deg);
+    });
+    const active = i === curIdx ? ' active' : '';
+    return `<button class="mobile-time-slot${good ? ' good' : ''}${active ? active : ''}" type="button" data-time-idx="${i}" aria-label="${formatHour(i)}${good ? ', kiteable period' : ''}">${times[i].slice(11, 13)}</button>`;
+  }).join('');
+  el('mobileTimeList').querySelectorAll('[data-time-idx]').forEach(button => {
+    button.onclick = () => update(Number(button.dataset.timeIdx), true);
+  });
   el('mobileSpotList').innerHTML = S.spots.map(s => {
     const speed = r(windAt(s, curIdx));
     const gust = r(s.hourly.wind_gusts_10m[curIdx]);
@@ -612,10 +622,10 @@ function renderMobileOverview() {
     const suitable = directionOk(s, deg);
     const usable = speed >= threshold && isDaylight(curIdx) && suitable;
     return `<button class="mobile-spot ${usable ? 'is-kiteable' : ''}" type="button" data-spot="${s.name}">`
-      + `<span class="mobile-spot-main"><strong>${s.name}</strong><small>${s.place || ''}</small></span>`
+      + `<span class="mobile-spot-main"><strong>${s.name}</strong></span>`
       + `<span class="mobile-spot-dir ${suitable ? 'dir-good' : 'dir-bad'}">${directionMarker(deg, speed)}<small>${Math.round(deg)}°</small></span>`
-      + `<span class="mobile-spot-values"><b>${speed} kt</b><span>${gust} gust</span><span>${temp} °C</span></span>`
-      + `<span class="mobile-spot-status">${usable ? 'Kiteable' : speed < threshold ? `Below ${threshold}` : suitable ? 'Limited' : 'Direction'}</span>`
+      + `<span class="mobile-spot-values"><b>${speed} (${gust}) kt</b><span>${temp}°</span></span>`
+      + `<span class="mobile-spot-status" aria-label="${usable ? 'Kiteable' : speed < threshold ? `Below ${threshold} knots` : suitable ? 'Limited' : 'Unsuitable direction'}">${usable ? '✓' : ''}</span>`
       + `</button>`;
   }).join('');
   el('mobileSpotList').querySelectorAll('[data-spot]').forEach(button => {
