@@ -928,7 +928,7 @@ async function copyDirectionConfig() {
 }
 
 const LIVE_KINDS = {
-  camera: { label: 'Camera', icon: '▣' },
+  camera: { label: 'Camera', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="6"/><circle cx="12" cy="9" r="2"/><path d="M12 15v4M8 21h8"/></svg>' },
   wind: { label: 'Wind reading', icon: '〰' },
   observations: { label: 'Observations', icon: '◉' }
 };
@@ -962,21 +962,21 @@ function renderLiveLinks(spot) {
       const icon = document.createElement('span');
       icon.className = 'live-card-icon';
       icon.setAttribute('aria-hidden', 'true');
-      icon.textContent = kind.icon;
+      if (link.type === 'camera') icon.innerHTML = kind.icon;
+      else icon.textContent = kind.icon;
       const body = document.createElement('span');
       body.className = 'live-card-body';
-      const type = document.createElement('span');
-      type.className = 'live-card-kind';
-      type.textContent = kind.label;
-      const provider = document.createElement('b');
-      provider.textContent = link.label;
-      const location = document.createElement('span');
+      const location = document.createElement('strong');
       location.className = 'live-card-place';
       location.textContent = link.location;
-      body.append(type, provider, location);
+      const provider = document.createElement('span');
+      provider.className = 'live-card-provider';
+      provider.textContent = link.label;
+      body.append(location, provider);
       const open = document.createElement('span');
       open.className = 'live-card-open';
-      open.textContent = 'Open ↗';
+      open.setAttribute('aria-hidden', 'true');
+      open.textContent = '↗';
       card.append(icon, body, open);
       cards.appendChild(card);
     }
