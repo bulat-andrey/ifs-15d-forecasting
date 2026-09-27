@@ -231,6 +231,11 @@ const MIME = {
 const server = http.createServer((req, res) => {
   const u = new URL(req.url, 'http://localhost');
 
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    res.writeHead(405, { 'content-type': 'text/plain; charset=utf-8', allow: 'GET, HEAD' });
+    return res.end('method not allowed');
+  }
+
   if (u.pathname === '/api/forecast') {
     res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
     return res.end(JSON.stringify(cache));

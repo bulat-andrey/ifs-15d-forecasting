@@ -38,6 +38,26 @@ Internet -> Caddy container (TLS) -> host:8787 -> gokite.service
 Caddy stays running during an application update. The current single-process
 setup has a short possible gap while Node is replaced; it is not zero-downtime.
 
+## Security baseline
+
+- Caddy terminates HTTPS and adds HSTS, anti-sniffing, clickjacking, referrer,
+  and permissions-policy headers.
+- Node accepts only `GET` and `HEAD` requests; it has no write endpoints.
+- The systemd unit runs as the unprivileged `gokite` user with filesystem,
+  kernel, namespace, device, and privilege restrictions.
+- Keep port `8787` blocked in the host firewall. It must be reachable by the
+  Caddy container, but not directly from the internet.
+- Never commit `.env` files, tokens, private keys, database files, or logs.
+  The repository `.gitignore` protects these local artifacts; `.env.example`
+  is the only environment file intended for Git.
+
+After changing the Caddy configuration, validate it before reloading:
+
+```bash
+docker exec krotkahomeops-caddy-1 caddy validate --config /etc/caddy/Caddyfile
+docker exec krotkahomeops-caddy-1 caddy reload --config /etc/caddy/Caddyfile
+```
+
 ## Install the GoKite systemd service
 
 For a persistent production installation, copy the repository to `/opt/gokite`
