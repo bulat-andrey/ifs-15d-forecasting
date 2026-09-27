@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>GoKite, Sułtani! — kite forecast</title>
-<link rel="stylesheet" href="/styles.attribution-header-v17-20260927.css?v=20260927-4" />
+<link rel="stylesheet" href="/styles.attribution-header-v17-20260927.css?v=20260927-5" />
 </head>
 <body>
 <div class="app">
@@ -131,6 +131,10 @@
           <span><i style="background:var(--gust)"></i>gusts</span>
           <span><i style="background:var(--precip)"></i>precip</span>
         </span>
+        <span class="gp-actions">
+          <a class="spot-wg" id="gpWg" target="_blank" rel="noopener noreferrer" aria-label="Open Windguru Pro forecast" title="Open Windguru Pro forecast"><img src="/windguru.jpg" alt="" /><span>Windguru ↗</span></a>
+          <button class="spot-live" id="gpLiveToggle" type="button" aria-controls="gpLivePanel" aria-expanded="false" hidden>Live</button>
+        </span>
         <a class="gp-attribution" href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo · CC BY 4.0</a>
       </div>
       <div class="gp-content">
@@ -164,6 +168,6 @@
     <div class="days" id="days" aria-label="Forecast timeline" tabindex="0"></div>
   </footer>
 </div>
-<script src="/app.attribution-header-v17-20260927.js?v=20260927-4"></script>
+<script src="/app.attribution-header-v17-20260927.js?v=20260927-9"></script>
 </body>
 </html>

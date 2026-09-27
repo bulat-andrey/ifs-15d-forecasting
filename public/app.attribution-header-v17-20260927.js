@@ -206,6 +206,7 @@ async function boot() {
   };
   setupDirectionDrag();
   el('spotLiveToggle').onclick = toggleLiveConditions;
+  el('gpLiveToggle').onclick = toggleLiveConditions;
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && !el('gpLivePanel').hidden) {
       setLiveOpen(false);
@@ -331,6 +332,18 @@ function initMap() {
   return map;
 }
 
+function fitAllSpots() {
+  if (!map || typeof L === 'undefined' || !S?.spots?.length) return;
+  const fit = () => {
+    if (!map || typeof L === 'undefined') return;
+    map.invalidateSize({ pan: false });
+    map.fitBounds(L.latLngBounds(S.spots.map(s => [s.lat, s.lon])), {
+      padding: [24, 24], maxZoom: 10, animate: false
+    });
+  };
+  requestAnimationFrame(() => requestAnimationFrame(fit));
+}
+
 const windAt = (spot, i) => spot.hourly ? (spot.hourly.wind_speed_10m[i] ?? 0) : 0;
 const usableWindAt = (spot, i) => directionOk(spot, spot.hourly.wind_direction_10m[i]) ? windAt(spot, i) : 0;
 const maxUsableWindAt = i => S.spots.reduce((m, s) => Math.max(m, usableWindAt(s, i)), 0);
@@ -438,11 +451,13 @@ function drawMarkers(i) {
   entries.forEach(e => {
     const { s } = e;
     const deg = s.hourly.wind_direction_10m[i];
-    const dirClass = directionOk(s, deg) ? ' dir-good' : ' dir-bad';
+    const suitable = directionOk(s, deg);
+    const dirClass = suitable ? ' dir-good' : ' dir-bad';
+    const discColor = suitable ? windColor(e.speed) : WIND_COLORS[0];
     const active = s.name === selName ? ' active' : '';
     const pos = place[e.i];
     const html = `<div class="pin${active}">`
-      + `<div class="disc${dirClass}" style="background:${windColor(e.speed)}"><span>${directionMarker(deg, e.speed)}</span></div>`
+      + `<div class="disc${dirClass}" style="background:${discColor}" title="${suitable ? 'Suitable direction' : 'Unsuitable direction'}"><span>${directionMarker(deg, e.speed)}</span></div>`
       + `<div class="plabel" style="left:${pos.dx}px;top:${pos.dy}px;width:${e.w}px"><span>${s.name}</span>`
       + `<b style="margin-left:auto;color:${windColor(e.speed)}">${e.windLabel}</b></div></div>`;
     markerObjs[e.i].m.setIcon(L.divIcon({ className: '', html, iconSize: [0, 0], iconAnchor: [0, 0] }));
@@ -466,9 +481,8 @@ function isDaylight(i) {
 }
 
 // Extra hour around sunrise/sunset: often still enough ambient light for a short kite
-// session, even though it's outside astronomical daylight. Used only for the hourly
-// table view — "kiteable now" on the map and the daylight timeline stay strictly
-// sunrise–sunset.
+// session, even though it's outside astronomical daylight. The map's current-status
+// indicator remains strict daylight; table and timeline include this planning buffer.
 const DUSK_EXTRA_H = 1;
 const DAWN_EXTRA_H = 1;
 function shiftIso(iso, hours) {
@@ -494,9 +508,10 @@ function buildTimeline() {
   timelineIdxs = [];
   const fmt = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
   daily.time.forEach((date, d) => {
-    const idxs = times.map((t, i) => t.startsWith(date) && isDaylight(i) ? i : -1).filter(i => i >= 0);
+    const idxs = times.map((t, i) => t.startsWith(date) && isTableUsable(i) ? i : -1).filter(i => i >= 0);
     timelineIdxs.push(...idxs);
     const daylightWinds = idxs.map(maxUsableWindAt);
+    const hasTwilight = idxs.some(i => !isDaylight(i));
     const hiRaw = daylightWinds.length ? Math.max(...daylightWinds) : 0;
     const hi = Math.round(hiRaw);
     const lo = daylightWinds.length ? Math.round(Math.min(...daylightWinds)) : 0;
@@ -512,12 +527,15 @@ function buildTimeline() {
       const speed = maxUsableWindAt(i);
       const cell = document.createElement('button');
       cell.type = 'button';
-      cell.className = 'hourcell';
+      const twilight = !isDaylight(i);
+      const suitableWind = maxUsableWindAt(i);
+      const kiteable = suitableWind >= threshold;
+      cell.className = `hourcell${twilight ? ' twilight' : ''}${kiteable ? ' kiteable' : ''}`;
       cell.dataset.idx = String(i);
       cell.dataset.time = times[i].slice(11, 16);
-      cell.style.background = windColor(speed);
-      cell.title = `${formatHour(i)} · ${r(speed, 1)} kt`;
-      cell.setAttribute('aria-label', `${formatHour(i)}, ${r(speed, 1)} knots`);
+      cell.style.background = kiteable && twilight ? '#136748' : windColor(speed);
+      cell.title = `${formatHour(i)} · ${r(speed, 1)} kt${twilight ? ' · +1h dawn/dusk' : ''}`;
+      cell.setAttribute('aria-label', `${formatHour(i)}, ${r(speed, 1)} knots${twilight ? ', one-hour dawn/dusk buffer' : ''}${kiteable ? ', kiteable period' : ''}`);
       cell.onclick = () => update(i, true);
       bar.appendChild(cell);
     });
@@ -526,7 +544,7 @@ function buildTimeline() {
     body.type = 'button';
     body.className = 'daybody';
     body.innerHTML = `<strong>${fmt.format(new Date(date + 'T12:00:00Z'))}</strong>`
-      + `<span>${daylightWinds.length ? lo + '–' + hi + ' kt daylight' : 'no daylight data'}</span>`;
+      + `<span>${daylightWinds.length ? lo + '–' + hi + ' kt' : 'no daylight data'}</span>`;
     body.onclick = () => update(idxs.length ? idxs[Math.floor(idxs.length / 2)] : 0, true);
 
     day.appendChild(bar);
@@ -618,15 +636,16 @@ function fillSelected(name, i) {
   kite.classList.toggle('no', !ok);
   kite.textContent = ok ? 'Kiteable now' : statusSpeed < threshold ? `Below ${threshold} kt` : !day ? 'Dark — not daylight' : 'Offshore direction';
   kite.title = `Forecast for ${formatHour(i)}`;
-  const wg = el('spotWg');
-  if (s.wg) {
-    wg.hidden = false; wg.removeAttribute('aria-disabled');
-    wg.href = s.wg; wg.style.opacity = '1'; wg.style.pointerEvents = 'auto';
-    wg.setAttribute('aria-label', `Open Windguru Pro forecast for ${s.name}`);
-    wg.title = `Open Windguru Pro forecast for ${s.name}`;
-  } else {
-    wg.hidden = true; wg.removeAttribute('href');
-  }
+  [el('spotWg'), el('gpWg')].forEach(wg => {
+    if (s.wg) {
+      wg.hidden = false; wg.removeAttribute('aria-disabled');
+      wg.href = s.wg; wg.style.opacity = '1'; wg.style.pointerEvents = 'auto';
+      wg.setAttribute('aria-label', `Open Windguru Pro forecast for ${s.name}`);
+      wg.title = `Open Windguru Pro forecast for ${s.name}`;
+    } else {
+      wg.hidden = true; wg.removeAttribute('href');
+    }
+  });
   el('spotSummary').hidden = false;
 }
 
@@ -695,15 +714,7 @@ function toggleMobileMap() {
   document.querySelector('.map-shell').classList.toggle('mobile-map-open', mobileMapOpen);
   el('mobileMapToggle').textContent = mobileMapOpen ? 'Forecast' : 'Map';
   el('mobileMapToggle').setAttribute('aria-label', mobileMapOpen ? 'Show forecast overview' : 'Show map');
-  if (mobileMapOpen) {
-    requestAnimationFrame(() => {
-      if (!map || typeof L === 'undefined') return;
-      map.invalidateSize();
-      map.fitBounds(L.latLngBounds(S.spots.map(s => [s.lat, s.lon])), {
-        padding: [24, 24], maxZoom: 10, animate: false
-      });
-    });
-  }
+  if (mobileMapOpen) fitAllSpots();
 }
 
 function openDirectionSettings() {
@@ -882,12 +893,13 @@ const LIVE_KINDS = {
 
 function renderLiveLinks(spot) {
   const links = spot.externalLinks || [];
-  const toggle = el('spotLiveToggle');
   const cards = el('gpLiveCards');
   cards.replaceChildren();
-  toggle.hidden = links.length === 0;
-  toggle.textContent = `Live (${links.length})`;
-  toggle.setAttribute('aria-label', `Show ${links.length} live sources`);
+  [el('spotLiveToggle'), el('gpLiveToggle')].forEach(toggle => {
+    toggle.hidden = links.length === 0;
+    toggle.textContent = `Live (${links.length})`;
+    toggle.setAttribute('aria-label', `Show ${links.length} live sources`);
+  });
   if (!links.length) return;
 
   for (const [proximity, heading] of [['direct', 'At this spot'], ['nearby', 'Nearby']]) {
@@ -931,15 +943,16 @@ function renderLiveLinks(spot) {
 
 function setLiveOpen(open) {
   const panel = el('gpLivePanel');
-  const toggle = el('spotLiveToggle');
   panel.hidden = !open;
   el('graphPanel').classList.toggle('live-open', open);
-  toggle.setAttribute('aria-expanded', String(open));
+  [el('spotLiveToggle'), el('gpLiveToggle')].forEach(toggle => toggle.setAttribute('aria-expanded', String(open)));
   if (selName) {
     const spot = S.spots.find(s => s.name === selName);
     const count = (spot.externalLinks || []).length;
-    toggle.textContent = `Live (${count})`;
-    toggle.setAttribute('aria-label', open ? 'Show forecast' : `Show ${count} live sources`);
+    [el('spotLiveToggle'), el('gpLiveToggle')].forEach(toggle => {
+      toggle.textContent = `Live (${count})`;
+      toggle.setAttribute('aria-label', open ? 'Show forecast' : `Show ${count} live sources`);
+    });
   }
 }
 
@@ -966,15 +979,7 @@ function clearSelection() {
   el('spotSummary').hidden = true;
   closeDirectionSettings();
   drawMarkers(curIdx);
-  if (mobileMapOpen) {
-    requestAnimationFrame(() => {
-      if (!map || typeof L === 'undefined') return;
-      map.invalidateSize();
-      map.fitBounds(L.latLngBounds(S.spots.map(s => [s.lat, s.lon])), {
-        padding: [24, 24], maxZoom: 10, animate: false
-      });
-    });
-  }
+  if (mobileMapOpen) fitAllSpots();
 }
 
 function setDetailView(view) {
