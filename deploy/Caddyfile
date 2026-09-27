@@ -1,8 +1,8 @@
 # Baltic Wind — Caddy reverse proxy with automatic HTTPS.
-# Replace kite.example.com with your domain (its A/AAAA record must point at this server).
+# The domain's A record points at this server.
 # Caddy fetches and renews a Let's Encrypt certificate automatically.
 
-kite.example.com {
+gokite.pomorskie.pl {
 	encode zstd gzip
 	reverse_proxy 127.0.0.1:8787
 

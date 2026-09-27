@@ -1,4 +1,6 @@
-# Sultans Radar
+# GoKite, Sułtani!
+
+Live app: [gokite.pomorskie.pl](https://gokite.pomorskie.pl)
 
 Kite-surf forecast for 13 Polish Baltic spots. Map-first: each spot is coloured by
 sustained wind and shows where the wind blows; the timeline highlights
