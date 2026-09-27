@@ -90,33 +90,35 @@ normal application or forecast-code changes.
 
 ## Deploy an update
 
-Pull and validate the revision in the working copy, then sync it to the
-systemd installation. The current live process remains active until the final
-restart:
+Pull and validate the revision in the working copy, then run the deployment
+script. The script refuses to deploy a dirty working tree, preserves `.env*`
+files in `/opt/gokite`, installs the systemd unit, restarts the service, and
+waits for a healthy forecast response:
 
 ```bash
 cd /home/bulat/workplace/sultansradar
 git pull --ff-only origin master
-node --check src/server.js
-sudo rsync -a --delete --exclude .git --exclude '.env*' ./ /opt/gokite/
-sudo chown -R gokite:gokite /opt/gokite
-sudo cp /opt/gokite/deploy/gokite.service /etc/systemd/system/gokite.service
-sudo systemctl daemon-reload
+./deploy/deploy.sh
 ```
 
-Restart the app and wait for the cache to become healthy:
+The script checks `http://127.0.0.1:8787/api/health` by default. Override the
+deployment directory or wait time when needed:
 
 ```bash
-sudo systemctl restart gokite
-until curl -fsS http://127.0.0.1:8787/api/health; do sleep 2; done
-curl -fsS https://gokite.pomorskie.pl/api/health
-curl -fsS https://gokite.pomorskie.pl/api/forecast \
-  | node -e "let d=''; process.stdin.on('data', x => d += x).on('end', () => { const j=JSON.parse(d); console.log(j.spots.map(s => s.name).join(', ')); })"
+WAIT_SECONDS=180 ./deploy/deploy.sh
 ```
 
 A healthy response has HTTP `200` and `ok: true`. During cold start,
 `/api/health` intentionally returns `503`; wait rather than restarting in a
 loop. Check `sudo journalctl -u gokite -n 50 --no-pager` if it remains unhealthy.
+
+After the local check succeeds, verify the public reverse proxy separately:
+
+```bash
+curl -fsS https://gokite.pomorskie.pl/api/health
+curl -fsS https://gokite.pomorskie.pl/api/forecast \
+  | node -e "let d=''; process.stdin.on('data', x => d += x).on('end', () => { const j=JSON.parse(d); console.log(j.spots.map(s => s.name).join(', ')); })"
+```
 
 ## Safer future deployment
 
