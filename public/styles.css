@@ -279,18 +279,16 @@ header { min-height: 66px; padding: 8px 20px; display: flex; align-items: center
   .mobile-time-slot.active { z-index: 1; box-shadow: inset 0 0 0 2px #fff; }
   .mobile-time-slot.active::after { content: ''; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; transform: translateX(-50%); background: #ff584d; }
   .mobile-spot-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; min-width: 0; }
-  .mobile-spot { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'main dir' 'values status'; gap: 4px 5px; width: 100%; min-height: 69px; padding: 7px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); text-align: left; }
+  .mobile-spot { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'main dir' 'values dir'; align-items: center; gap: 2px 5px; width: 100%; min-height: 48px; padding: 5px 7px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); text-align: left; }
   .mobile-spot.is-kiteable { border-color: #25d88a; background: rgba(37,216,138,.38); }
   .mobile-spot:active { background: var(--surface-2); }
   .mobile-spot-main { grid-area: main; display: grid; min-width: 0; }
-  .mobile-spot-main strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
-  .mobile-spot-dir { grid-area: dir; display: grid; justify-items: center; min-width: 27px; }
-  .mobile-spot-dir .wind-barb, .mobile-spot-dir .wind-arrow { width: 23px; height: 23px; }
-  .mobile-spot-dir small { font-size: 9px; font-weight: 800; }
-  .mobile-spot-values { grid-area: values; display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 9px; white-space: nowrap; }
+  .mobile-spot-main strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; line-height: 1.1; }
+  .mobile-spot-dir { grid-area: dir; display: grid; justify-items: center; align-content: center; min-width: 25px; line-height: 1; }
+  .mobile-spot-dir .wind-barb, .mobile-spot-dir .wind-arrow { width: 20px; height: 20px; margin-bottom: -1px; }
+  .mobile-spot-dir small { font-size: 8px; font-weight: 800; line-height: 1; }
+  .mobile-spot-values { grid-area: values; display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 9px; line-height: 1.1; white-space: nowrap; }
   .mobile-spot-values b { color: var(--text); }
-  .mobile-spot-status { grid-area: status; align-self: center; color: var(--safe); font-size: 14px; font-weight: 900; white-space: nowrap; }
-  .mobile-spot.is-kiteable .mobile-spot-status { color: var(--safe); }
   #map, .map-legend, .map-attrib, .map-feedback, .map-transport, .map-model { display: none; }
   .map-shell.mobile-map-open #map { display: block; }
   .map-shell.mobile-map-open .mobile-board { display: none; }
