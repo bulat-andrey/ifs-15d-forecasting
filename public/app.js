@@ -631,11 +631,11 @@ function renderMobileOverview() {
     const temp = r(s.hourly.temperature_2m[curIdx]);
     const suitable = directionOk(s, deg);
     const usable = statusSpeed >= threshold && isDaylight(curIdx) && suitable;
-    return `<button class="mobile-spot ${usable ? 'is-kiteable' : ''}" type="button" data-spot="${s.name}">`
+    const aria = usable ? 'Kiteable' : statusSpeed < threshold ? `Below ${threshold} knots` : suitable ? 'Limited' : 'Unsuitable direction';
+    return `<button class="mobile-spot ${usable ? 'is-kiteable' : ''}" type="button" data-spot="${s.name}" aria-label="${s.name}: ${aria}">`
       + `<span class="mobile-spot-main"><strong>${s.name}</strong></span>`
       + `<span class="mobile-spot-dir ${suitable ? 'dir-good' : 'dir-bad'}">${directionMarker(deg, speed)}<small>${Math.round(deg)}°</small></span>`
       + `<span class="mobile-spot-values"><b>${speed} (${gust}) kt</b><span>${temp}°</span></span>`
-      + `<span class="mobile-spot-status" aria-label="${usable ? 'Kiteable' : statusSpeed < threshold ? `Below ${threshold} knots` : suitable ? 'Limited' : 'Unsuitable direction'}">${usable ? '✓' : ''}</span>`
       + `</button>`;
   }).join('');
   el('mobileSpotList').querySelectorAll('[data-spot]').forEach(button => {
