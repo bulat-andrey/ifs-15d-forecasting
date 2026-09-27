@@ -2,7 +2,7 @@
 
 Live app: [gokite.pomorskie.pl](https://gokite.pomorskie.pl)
 
-Kite-surf forecast for 13 Polish Baltic spots. Map-first: each spot is coloured by
+Kite-surf forecast for 14 Polish Baltic spots. Map-first: each spot is coloured by
 sustained wind and shows where the wind blows; the timeline highlights
 **daylight** kiteable windows (you don't kite in the dark), and selecting a spot opens a
 Windguru-style 15-day graph. Forecast data comes from a server-side cached
@@ -32,11 +32,12 @@ no backend database, no build step.
 | Path | What |
 |---|---|
 | `src/server.js` | Zero-dependency Node HTTP server: static hosting + blended `/api/forecast` + scheduled refresh |
-| `src/spots.js` | The 13 spots (coords + label offsets) — single source of truth |
+| `src/spots.js` | The 14 spots (coords + label offsets) — single source of truth |
 | `src/config.js` | Port, blend models, refresh cadence, kite threshold (all env-overridable) |
 | `public/index.html` · `app.js` · `styles.css` | The front-end |
 | `deploy/Caddyfile` | Reverse proxy + automatic HTTPS |
 | `deploy/baltic-wind.service` | systemd unit |
+| `docs/deployment.md` | Local smoke test and production deployment procedure |
 
 ## Run locally
 
@@ -58,7 +59,7 @@ node src/server.js
 # → baltic-wind listening on http://127.0.0.1:8787
 ```
 
-Open http://127.0.0.1:8787. First load fetches all 13 spots for each blend model;
+Open http://127.0.0.1:8787. First load fetches all 14 spots for each blend model;
 `/api/health` reports freshness and loaded model state.
 
 Config via env (see `.env.example`): `PORT`, `OPENMETEO_MODEL` (`ecmwf_ifs` = 9 km HRES,
