@@ -1,5 +1,5 @@
 {
-  "name": "baltic-wind",
+  "name": "gokite",
   "version": "1.0.0",
   "private": true,
   "description": "Kite-surf forecast for the Polish Baltic coast — server-side cached ICON/ECMWF blend via Open-Meteo, map-first UI.",

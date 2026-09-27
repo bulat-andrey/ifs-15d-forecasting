@@ -1,21 +1,20 @@
 [Unit]
-Description=Baltic Wind kite forecast (Node service)
+Description=GoKite forecast service (Node)
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
 # Adjust User and WorkingDirectory to your deployment.
-User=baltic
-WorkingDirectory=/opt/baltic-wind
-ExecStart=/usr/bin/node src/server.js
+User=gokite
+WorkingDirectory=/opt/gokite
+ExecStart=/usr/local/bin/node-gokite src/server.js
 Restart=always
 RestartSec=5
 Environment=NODE_ENV=production
-Environment=HOST=127.0.0.1
+Environment=HOST=0.0.0.0
 Environment=PORT=8787
 # Optional overrides:
-# Environment=REFRESH_MIN=30
 # Environment=OPENMETEO_MODEL=ecmwf_ifs
 # Environment=CELL_SELECTION=sea
 

@@ -1,5 +1,5 @@
 'use strict';
-// Baltic Wind — tiny zero-dependency Node server.
+// GoKite — tiny zero-dependency Node server.
 // - Fetches each blend model (ICON-D2, ICON-EU, ECMWF) from Open-Meteo in its own
 //   multi-coordinate request, on an independent run-aligned schedule.
 // - Merges them into ONE seamless per-spot series: best model per lead time, with a
@@ -19,7 +19,7 @@ const ANCHOR = MODELS[MODELS.length - 1];          // coarsest / longest-range (
 const BOUNDARIES = MODELS.slice(0, -1).map(m => m.useUntilH); // internal seams, e.g. [48, 120]
 const HOURLY_VARS = 'wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m,precipitation';
 const SCALAR_VARS = ['wind_speed_10m', 'wind_gusts_10m', 'temperature_2m', 'precipitation']; // linearly blendable
-const UA = { 'User-Agent': 'baltic-wind/1.0 (personal, non-commercial)' };
+const UA = { 'User-Agent': 'gokite/1.0 (personal, non-commercial)' };
 
 let cache = emptyCache();
 const rawByModel = {}; // id -> array (one entry per spot, in `spots` order) | null
@@ -183,7 +183,7 @@ function buildBlend() {
     model_update_interval_seconds: a.interval || null,
     timezone: cfg.TIMEZONE,
     threshold_kt: cfg.KITE_THRESHOLD_KT,
-    models: MODELS.map(m => ({ id: m.id, label: m.label, short: m.shortLabel, useUntilH: m.useUntilH === Infinity ? null : m.useUntilH, run: iso(state[m.id].run), availability: iso(state[m.id].avail), loaded: !!rawByModel[m.id] })),
+    models: MODELS.map(m => ({ id: m.id, label: m.label, short: m.shortLabel, useUntilH: m.useUntilH === Infinity ? null : m.useUntilH, run: iso(state[m.id].run), availability: iso(state[m.id].avail), fetched: state[m.id].lastFetchMs ? new Date(state[m.id].lastFetchMs).toISOString() : null, updateIntervalSeconds: state[m.id].interval || null, loaded: !!rawByModel[m.id] })),
     spots: outSpots
   };
   console.log(`[blend] ${cache.generated} spots=${outSpots.length} models=${MODELS.filter(m => rawByModel[m.id]).map(m => m.shortLabel).join('+')}`);
@@ -256,7 +256,7 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(cfg.PORT, cfg.HOST, () => {
-  console.log(`baltic-wind listening on http://${cfg.HOST}:${cfg.PORT} (blend=${MODELS.map(m => m.shortLabel).join('→')}, crossfade ${CF}h, meta poll ${cfg.METADATA_POLL_MIN}min, +${cfg.POST_RUN_DELAY_MIN}min settle)`);
+  console.log(`gokite listening on http://${cfg.HOST}:${cfg.PORT} (blend=${MODELS.map(m => m.shortLabel).join('→')}, crossfade ${CF}h, meta poll ${cfg.METADATA_POLL_MIN}min, +${cfg.POST_RUN_DELAY_MIN}min settle)`);
 });
 
 // Cold start: fetch every model immediately (in parallel) so the app isn't empty,

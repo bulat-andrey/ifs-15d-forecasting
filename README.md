@@ -36,7 +36,7 @@ no backend database, no build step.
 | `src/config.js` | Port, blend models, refresh cadence, kite threshold (all env-overridable) |
 | `public/index.html` · `app.js` · `styles.css` | The front-end |
 | `deploy/Caddyfile` | Reverse proxy + automatic HTTPS |
-| `deploy/baltic-wind.service` | systemd unit |
+| `deploy/gokite.service` | systemd unit |
 | `docs/deployment.md` | Local smoke test and production deployment procedure |
 
 ## Run locally
@@ -56,7 +56,7 @@ To run without Docker, use **Node.js ≥ 18** (built-in `fetch`). No `npm instal
 
 ```bash
 node src/server.js
-# → baltic-wind listening on http://127.0.0.1:8787
+# → gokite listening on http://127.0.0.1:8787
 ```
 
 Open http://127.0.0.1:8787. First load fetches all 14 spots for each blend model;
@@ -86,17 +86,17 @@ when control passes from one model to the next.
 
 ## Deploy on a small Linux server
 
-1. Copy the repo to the box, e.g. `/opt/baltic-wind`, and install Node ≥ 18.
+1. Copy the repo to the box, e.g. `/opt/gokite`, and install Node ≥ 18.
 2. Create a service user and install the unit:
    ```bash
-   sudo useradd --system --home /opt/baltic-wind baltic || true
-   sudo cp deploy/baltic-wind.service /etc/systemd/system/
+   sudo useradd --system --home /opt/gokite gokite || true
+   sudo cp deploy/gokite.service /etc/systemd/system/
    # edit WorkingDirectory/User in the unit if your paths differ
    sudo systemctl daemon-reload
-   sudo systemctl enable --now baltic-wind
-   sudo systemctl status baltic-wind
+   sudo systemctl enable --now gokite
+   sudo systemctl status gokite
    ```
-   The service binds to `127.0.0.1:8787` only.
+   The service binds to port `8787` for the Docker-based Caddy reverse proxy.
 3. Point Caddy at it. Put your domain in `deploy/Caddyfile` (DNS A/AAAA → this server), then:
    ```bash
    sudo cp deploy/Caddyfile /etc/caddy/Caddyfile
@@ -105,7 +105,7 @@ when control passes from one model to the next.
    Caddy obtains and renews HTTPS automatically. Browse `https://your-domain`.
 
 Open ports **80 and 443** to the internet (Caddy needs 80 for the ACME challenge); keep
-**8787 closed** — only Caddy talks to it over loopback.
+**8787 closed** in the firewall — only the Caddy container should reach it.
 
 ## Data & licence
 
