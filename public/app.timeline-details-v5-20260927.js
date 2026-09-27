@@ -146,19 +146,11 @@ async function boot() {
   map0.fitBounds(L.latLngBounds(S.spots.map(s => [s.lat, s.lon])), { paddingTopLeft: [24, 20], paddingBottomRight: [24, 20] });
   buildTimeline();
   curIdx = nearestTimelineIndex(nowIndex());
-  const compactPhone = window.matchMedia('(max-width: 760px)').matches
-    || window.matchMedia('(pointer: coarse) and (max-height: 600px)').matches;
-  if (compactPhone) {
-    graphStartIdx = curIdx;
-    graphEndIdx = Math.min(times.length - 1, curIdx + 72);
-    updateGraphRangeUi();
-  }
   el('days').addEventListener('keydown', onTimelineKey);
   el('play').onclick = togglePlay;
   el('prevSlot').onclick = () => stepTimeline(-1);
   el('nextSlot').onclick = () => stepTimeline(1);
   el('mobileMapToggle').onclick = toggleMobileMap;
-  el('mobileMapBack').onclick = toggleMobileMap;
   el('gpClose').onclick = clearSelection;
   setupGraphPanelDrag();
   el('tableView').onclick = () => setDetailView('table');
@@ -667,14 +659,7 @@ function toggleMobileMap() {
   document.querySelector('.map-shell').classList.toggle('mobile-map-open', mobileMapOpen);
   el('mobileMapToggle').textContent = mobileMapOpen ? 'Forecast' : 'Map';
   el('mobileMapToggle').setAttribute('aria-label', mobileMapOpen ? 'Show forecast overview' : 'Show map');
-  if (mobileMapOpen) {
-    requestAnimationFrame(() => {
-      map.invalidateSize();
-      map.fitBounds(L.latLngBounds(S.spots.map(s => [s.lat, s.lon])), {
-        padding: [24, 24], maxZoom: 10, animate: false
-      });
-    });
-  }
+  if (mobileMapOpen) map.invalidateSize();
 }
 
 function openDirectionSettings() {
@@ -937,14 +922,6 @@ function clearSelection() {
   el('spotSummary').hidden = true;
   closeDirectionSettings();
   drawMarkers(curIdx);
-  if (mobileMapOpen) {
-    requestAnimationFrame(() => {
-      map.invalidateSize();
-      map.fitBounds(L.latLngBounds(S.spots.map(s => [s.lat, s.lon])), {
-        padding: [24, 24], maxZoom: 10, animate: false
-      });
-    });
-  }
 }
 
 function setDetailView(view) {
@@ -1055,7 +1032,7 @@ function renderSpotTable(name) {
     const blockIdxs = dayGroups[d].idxs;
     let dayCells = '', timeCells = '', modelCells = '', windCells = '', gustCells = '', dirCells = '', tempCells = '', precipCells = '';
     blockIdxs.forEach((i, pos) => {
-      const t = times[i];
+      const t = times[i], prev = blockIdxs[pos - 1], dayStart = prev == null || times[prev].slice(0, 10) !== t.slice(0, 10);
       const dusk = isDuskUsable(i), dawn = isDawnUsable(i);
       const c = (i === activeIdx ? ' active' : '') + (dusk || dawn ? ' dusk' : ' daylight');
       const wind = r(h.wind_speed_10m[i], 1), gust = r(h.wind_gusts_10m[i]), deg = h.wind_direction_10m[i];
@@ -1064,7 +1041,7 @@ function renderSpotTable(name) {
       const twilightNote = dusk ? ' · dusk — limited light' : dawn ? ' · dawn — limited light' : '';
       const title = `${formatHour(i)} · ${modelLabel(mid)}${twilightNote}`;
       const dirOk = directionOk(s, deg);
-      if (pos === 0) dayCells += `<td class="${c}" colspan="${Math.min(4, blockIdxs.length)}" title="${title}">${dayName(t)}</td>`;
+      dayCells += `<td class="${c}" title="${title}">${dayStart ? dayName(t) : ''}</td>`;
       timeCells += `<td class="${c}" title="${title}">${t.slice(11, 13)}</td>`;
       modelCells += `<td class="${c} model-cell" title="${modelLabel(mid)}"><i style="background:${modelColor(mid)}"></i></td>`;
       windCells += `<td class="${c} wind-cell" title="${title}" style="background:${windColor(wind)}">${wind}</td>`;
@@ -1085,7 +1062,8 @@ function renderSpotTable(name) {
       + `</table>`);
   }
   el('gpName').textContent = s.name;
-  const twilightNote = nDawn || nDusk ? '<span style="opacity:.7">+1h dawn/dusk</span>' : '';
+  const twilightParts = [nDawn ? `${nDawn} dawn` : '', nDusk ? `${nDusk} dusk` : ''].filter(Boolean).join(', ');
+  const twilightNote = twilightParts ? `<span style="opacity:.7">+${twilightParts}</span>` : '';
   el('gpSub').innerHTML = `${modelLegend}${twilightNote}`;
   el('spotTable').innerHTML = blockHtml.map(html => `<div class="spot-table-block">${html}</div>`).join('');
   requestAnimationFrame(() => {

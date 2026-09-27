@@ -146,9 +146,7 @@ async function boot() {
   map0.fitBounds(L.latLngBounds(S.spots.map(s => [s.lat, s.lon])), { paddingTopLeft: [24, 20], paddingBottomRight: [24, 20] });
   buildTimeline();
   curIdx = nearestTimelineIndex(nowIndex());
-  const compactPhone = window.matchMedia('(max-width: 760px)').matches
-    || window.matchMedia('(pointer: coarse) and (max-height: 600px)').matches;
-  if (compactPhone) {
+  if (window.matchMedia('(max-width: 760px)').matches) {
     graphStartIdx = curIdx;
     graphEndIdx = Math.min(times.length - 1, curIdx + 72);
     updateGraphRangeUi();
@@ -937,14 +935,6 @@ function clearSelection() {
   el('spotSummary').hidden = true;
   closeDirectionSettings();
   drawMarkers(curIdx);
-  if (mobileMapOpen) {
-    requestAnimationFrame(() => {
-      map.invalidateSize();
-      map.fitBounds(L.latLngBounds(S.spots.map(s => [s.lat, s.lon])), {
-        padding: [24, 24], maxZoom: 10, animate: false
-      });
-    });
-  }
 }
 
 function setDetailView(view) {
