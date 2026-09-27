@@ -5,12 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Sultans Radar — kite forecast</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<link rel="stylesheet" href="/styles.map-return-v16-20260927.css" />
+<link rel="stylesheet" href="/styles.attribution-header-v17-20260927.css" />
 </head>
 <body>
 <div class="app">
   <header>
-    <div class="brand">Sultans <b>Radar</b></div>
+    <div class="brand-group">
+      <div class="brand">Sultans <b>Radar</b></div>
+      <a class="header-attribution" href="https://open-meteo.com" target="_blank" rel="noopener">Weather by Open-Meteo · CC BY 4.0</a>
+    </div>
     <div class="time-now"><b id="timeLabel">—</b></div>
     <div class="spot-summary" id="spotSummary" aria-live="polite" hidden>
       <span class="spot-arrow" id="spotArrow">·</span>
@@ -71,7 +74,6 @@
         </div>
         <button class="mobile-map-toggle" id="mobileMapToggle" type="button" aria-label="Show map">Map</button>
       </div>
-      <div class="mobile-attrib">Weather data by <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> (CC BY 4.0) · ICON/ECMWF</div>
       <div class="mobile-overview">
         <div class="mobile-spot-list" id="mobileSpotList" aria-label="Forecast by spot"></div>
       </div>
@@ -100,7 +102,6 @@
       <span><i style="background:#a855f7"></i><b id="leg6">45+</b></span>
     </div>
     <div class="map-model" id="mapModel" hidden aria-live="polite"></div>
-    <div class="map-attrib">Weather data by <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> (CC BY 4.0) · ICON/ECMWF</div>
     <section class="dir-settings" id="dirSettings" hidden>
       <button class="dir-close" id="dirClose" type="button" aria-label="Close direction settings">✕</button>
       <div class="dir-head" id="dirDragHandle"><b id="dirSpotName">Spot</b><span>drag</span></div>
@@ -131,6 +132,7 @@
           <span><i style="background:var(--gust)"></i>gusts</span>
           <span><i style="background:var(--precip)"></i>precip</span>
         </span>
+        <a class="gp-attribution" href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo · CC BY 4.0</a>
       </div>
       <div class="gp-content">
         <div class="gp-forecast" id="gpForecast">
@@ -164,6 +166,6 @@
   </footer>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="/app.map-return-v16-20260927.js"></script>
+<script src="/app.attribution-header-v17-20260927.js"></script>
 </body>
 </html>
