@@ -100,8 +100,32 @@ let timelineIdxs = [];
 
 const toIdx = iso => (Date.parse((iso.length === 16 ? iso : iso.slice(0, 16)) + ':00Z') - t0) / 3_600_000;
 
+function loadLeaflet() {
+  if (typeof L !== 'undefined') return Promise.resolve(true);
+  return new Promise(resolve => {
+    let settled = false;
+    const finish = loaded => {
+      if (settled) return;
+      settled = true;
+      resolve(loaded);
+    };
+    const css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(css);
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.onload = () => finish(typeof L !== 'undefined');
+    script.onerror = () => finish(false);
+    document.head.appendChild(script);
+    setTimeout(() => finish(typeof L !== 'undefined'), 2500);
+  });
+}
+
 async function boot() {
-  const map0 = initMap();
+  // The mobile forecast remains usable if the optional map library is blocked.
+  const mapReady = await loadLeaflet();
+  const map0 = mapReady ? initMap() : null;
   try {
     const res = await fetch('/api/forecast', { cache: 'no-store' });
     S = await res.json();
@@ -141,9 +165,11 @@ async function boot() {
   setupThresholdControl();
   setupMarkerStyleControl();
 
-  addMarkers(map0);
-  // Tight fit: minimal padding so there's no dead sea west of Łeba / east of Krynica Morska.
-  map0.fitBounds(L.latLngBounds(S.spots.map(s => [s.lat, s.lon])), { paddingTopLeft: [24, 20], paddingBottomRight: [24, 20] });
+  if (map0) {
+    addMarkers(map0);
+    // Tight fit: minimal padding so there's no dead sea west of Łeba / east of Krynica Morska.
+    map0.fitBounds(L.latLngBounds(S.spots.map(s => [s.lat, s.lon])), { paddingTopLeft: [24, 20], paddingBottomRight: [24, 20] });
+  }
   buildTimeline();
   curIdx = nearestTimelineIndex(nowIndex());
   const compactPhone = window.matchMedia('(max-width: 760px)').matches
@@ -189,7 +215,7 @@ async function boot() {
   update(curIdx);
   // Re-run label de-collision whenever the view changes (zoom changes disc spacing;
   // pan/resize change which labels would run off the edge).
-  map0.on('zoomend moveend resize', () => { if (S) drawMarkers(curIdx); });
+  map0?.on('zoomend moveend resize', () => { if (S) drawMarkers(curIdx); });
 }
 
 function loadThreshold(fallback) {
@@ -318,6 +344,7 @@ function nowIndex() {
 }
 
 function addMarkers(map) {
+  if (!map || typeof L === 'undefined') return;
   markerObjs = S.spots.map(s => {
     const m = L.marker([s.lat, s.lon], { icon: L.divIcon({ className: '', html: '', iconSize: [0, 0], iconAnchor: [0, 0] }) }).addTo(map);
     m.on('click', () => selectSpot(s.name));
@@ -400,6 +427,7 @@ function computeLabelPlacements(entries) {
 }
 
 function drawMarkers(i) {
+  if (!map || !markerObjs.length) return;
   const entries = markerObjs.map(({ s }, idx) => {
     const speed = r(windAt(s, i), 1), gust = r(s.hourly.wind_gusts_10m[i]);
     const windLabel = `${speed} (${gust}) kt`;
@@ -669,6 +697,7 @@ function toggleMobileMap() {
   el('mobileMapToggle').setAttribute('aria-label', mobileMapOpen ? 'Show forecast overview' : 'Show map');
   if (mobileMapOpen) {
     requestAnimationFrame(() => {
+      if (!map || typeof L === 'undefined') return;
       map.invalidateSize();
       map.fitBounds(L.latLngBounds(S.spots.map(s => [s.lat, s.lon])), {
         padding: [24, 24], maxZoom: 10, animate: false
@@ -939,6 +968,7 @@ function clearSelection() {
   drawMarkers(curIdx);
   if (mobileMapOpen) {
     requestAnimationFrame(() => {
+      if (!map || typeof L === 'undefined') return;
       map.invalidateSize();
       map.fitBounds(L.latLngBounds(S.spots.map(s => [s.lat, s.lon])), {
         padding: [24, 24], maxZoom: 10, animate: false
