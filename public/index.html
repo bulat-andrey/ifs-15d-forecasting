@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Sultans Radar — kite forecast</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<link rel="stylesheet" href="/styles.timeline-details-v5-20260927.css" />
+<link rel="stylesheet" href="/styles.timeline-map-v6-20260927.css" />
 </head>
 <body>
 <div class="app">
@@ -67,11 +67,14 @@
       <div class="mobile-overview">
         <div class="mobile-spot-list" id="mobileSpotList" aria-label="Forecast by spot"></div>
       </div>
-      <aside class="mobile-time-dock" aria-label="Forecast timeline">
-        <div class="mobile-time-current"><strong id="mobileTime">—</strong><span id="mobileTimeZone">local</span></div>
-        <div class="mobile-time-list" id="mobileTimeList" aria-label="Forecast hours"></div>
-      </aside>
     </section>
+    <div class="mobile-map-toolbar">
+      <button class="mobile-map-back" id="mobileMapBack" type="button" aria-label="Show spot table">Spots</button>
+    </div>
+    <aside class="mobile-time-dock" aria-label="Forecast timeline">
+      <div class="mobile-time-current"><strong id="mobileTime">—</strong><span id="mobileTimeZone">local</span></div>
+      <div class="mobile-time-list" id="mobileTimeList" aria-label="Forecast hours"></div>
+    </aside>
     <div class="loading" id="loading">Loading forecast…</div>
     <div class="map-transport" aria-label="Timeline controls">
       <button class="step" id="prevSlot" aria-label="Previous forecast period">‹</button>
@@ -158,6 +161,6 @@
   </footer>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="/app.timeline-details-v5-20260927.js"></script>
+<script src="/app.timeline-map-v6-20260927.js"></script>
 </body>
 </html>
