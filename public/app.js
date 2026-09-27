@@ -606,6 +606,8 @@ function renderMobileOverview() {
   el('mobileTimeList').innerHTML = S.spots[0].daily.time.map(day => {
     const dayIndexes = times.map((t, i) => t.startsWith(day) && isTableUsable(i) ? i : -1).filter(i => i >= 0);
     if (!dayIndexes.length) return '';
+    const dayModels = [...new Set(dayIndexes.map(i => S.spots[0].hourly.model && S.spots[0].hourly.model[i]).filter(Boolean))];
+    const modelText = dayModels.length ? ` [${dayModels.map(modelShort).join('/')}]` : '';
     const slots = dayIndexes.map(i => {
       const strongest = maxUsableWindAt(i);
       const good = S.spots.some(s => {
@@ -614,11 +616,15 @@ function renderMobileOverview() {
       });
       const active = i === curIdx ? ' active' : '';
       const height = Math.max(12, Math.min(100, strongest / 30 * 100));
-      return `<button class="mobile-time-slot${good ? ' good' : ''}${active}" style="--wind-height:${height.toFixed(1)}%" type="button" data-time-idx="${i}" aria-label="${formatHour(i)}, ${r(strongest, 1)} knots${good ? ', kiteable period' : ''}">`
-        + `<span class="mobile-wind-column"></span><small>${times[i].slice(11, 13)}</small></button>`;
+      const temp = S.spots[0].hourly.temperature_2m[i];
+      const precip = S.spots[0].hourly.precipitation[i];
+      const precipText = precip > 0 ? r(precip, 1) : '—';
+      return `<button class="mobile-time-slot${good ? ' good' : ''}${active}" style="--wind-height:${height.toFixed(1)}%" type="button" data-time-idx="${i}" aria-label="${formatHour(i)}, ${r(strongest, 1)} knots, ${temp != null ? r(temp) + ' degrees' : 'temperature unavailable'}, ${precip > 0 ? r(precip, 1) + ' millimetres precipitation' : 'no precipitation'}${good ? ', kiteable period' : ''}">`
+        + `<span class="mobile-time-temp">${temp != null ? r(temp) + '°' : '—'}</span>`
+        + `<span class="mobile-wind-column"></span><span class="mobile-time-precip">${precipText}</span><small>${times[i].slice(11, 13)}</small></button>`;
     }).join('');
     const weekend = [0, 6].includes(new Date(`${day}T12:00:00Z`).getUTCDay());
-    return `<div class="mobile-time-day${weekend ? ' weekend' : ''}"><b>${dayName(day)}</b><div class="mobile-time-slots">${slots}</div></div>`;
+    return `<div class="mobile-time-day${weekend ? ' weekend' : ''}"><b title="Forecast model${modelText}">${dayName(day)}${modelText}</b><div class="mobile-time-slots">${slots}</div></div>`;
   }).join('');
   el('mobileTimeList').querySelectorAll('[data-time-idx]').forEach(button => {
     button.onclick = () => update(Number(button.dataset.timeIdx), true);
