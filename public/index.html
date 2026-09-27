@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Sultans Radar — kite forecast</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="/styles.css?v=exact-hour-colors-20260926" />
+  <link rel="stylesheet" href="/styles.css?v=mobile-bottom-timeline-20260927" />
 </head>
 <body>
 <div class="app">
@@ -65,12 +65,12 @@
         <button class="mobile-map-toggle" id="mobileMapToggle" type="button" aria-label="Show map">Map</button>
       </div>
       <div class="mobile-overview">
-        <aside class="mobile-time-rail" aria-label="Forecast time">
-          <div class="mobile-time-current"><strong id="mobileTime">—</strong><span id="mobileTimeZone">local</span></div>
-          <div class="mobile-time-list" id="mobileTimeList" aria-label="Hours for selected day"></div>
-        </aside>
         <div class="mobile-spot-list" id="mobileSpotList" aria-label="Forecast by spot"></div>
       </div>
+      <aside class="mobile-time-dock" aria-label="Forecast timeline">
+        <div class="mobile-time-current"><strong id="mobileTime">—</strong><span id="mobileTimeZone">local</span></div>
+        <div class="mobile-time-list" id="mobileTimeList" aria-label="Forecast hours"></div>
+      </aside>
     </section>
     <div class="loading" id="loading">Loading forecast…</div>
     <div class="map-transport" aria-label="Timeline controls">
@@ -158,6 +158,6 @@
   </footer>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="/app.js?v=exact-threshold-20260926"></script>
+<script src="/app.js?v=mobile-bottom-timeline-20260927"></script>
 </body>
 </html>
