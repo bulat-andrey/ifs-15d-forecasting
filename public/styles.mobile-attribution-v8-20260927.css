@@ -12,11 +12,8 @@ body { margin: 0; min-width: 320px; max-width: 100vw; background: var(--page); c
 button { font: inherit; }
 .app { width: 100%; height: 100vh; height: 100dvh; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; }
 header { min-height: 66px; padding: 8px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--line); background: rgba(6,16,28,.94); position: relative; z-index: 650; min-width: 0; overflow: visible; }
-.brand-group { display: grid; gap: 1px; flex: 0 0 auto; min-width: 0; }
-.brand { font-weight: 900; font-size: 22px; letter-spacing: -.04em; white-space: nowrap; }
+.brand { font-weight: 900; font-size: 22px; letter-spacing: -.04em; flex: 0 0 auto; white-space: nowrap; }
 .brand b { color: var(--safe); }
-.header-attribution { color: var(--muted); font-size: 9px; line-height: 1; text-decoration: none; white-space: nowrap; }
-.header-attribution:hover, .header-attribution:focus-visible { color: var(--accent); text-decoration: underline; }
 .control { border: 1px solid var(--line); background: var(--surface); color: var(--text); border-radius: 10px; padding: 8px 12px; }
 .control { cursor: pointer; }
 .user-settings { position: relative; flex: 0 0 auto; }
@@ -72,6 +69,8 @@ header { min-height: 66px; padding: 8px 20px; display: flex; align-items: center
 .map-legend span { display: flex; align-items: center; gap: 6px; }
 .map-legend b { color: var(--muted); font-weight: 750; }
 .map-legend i { width: 12px; height: 10px; border-radius: 2px; flex: 0 0 auto; }
+.map-attrib { position: absolute; right: 10px; bottom: 24px; z-index: 620; padding: 3px 6px; border-radius: 6px; background: rgba(6,16,28,.72); color: #c3d7e8; font-size: 11px; }
+.map-attrib a { color: #c3d7e8; }
 .dir-settings { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 680; width: min(410px, calc(100% - 32px)); display: grid; gap: 7px; padding: 11px; border: 1px solid var(--line); border-radius: 12px; background: rgba(6,16,28,.75); box-shadow: 0 12px 28px rgba(0,0,0,.42); color: var(--text); }
 .dir-settings[hidden] { display: none; }
 .dir-head { display: flex; align-items: center; gap: 8px; cursor: move; user-select: none; touch-action: none; padding-right: 28px; }
@@ -122,7 +121,6 @@ header { min-height: 66px; padding: 8px 20px; display: flex; align-items: center
 .graph-panel .gp-heading { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex-wrap: wrap; }
 .graph-panel .gp-head b { font-size: 15px; }
 .graph-panel .gp-head span { color: var(--muted); font-size: 12px; }
-.graph-panel #gpSub { display: flex; flex-wrap: wrap; gap: 3px 8px; min-width: 0; white-space: normal; line-height: 1.25; }
 .graph-panel #gpSub i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
 .graph-panel #gpSub span { margin-right: 7px; white-space: nowrap; }
 .view-toggle { display: inline-flex; align-items: center; padding: 2px; border: 1px solid var(--line); border-radius: 8px; background: rgba(13,29,47,.92); gap: 2px; }
@@ -130,8 +128,6 @@ header { min-height: 66px; padding: 8px 20px; display: flex; align-items: center
 .view-toggle button.active { background: var(--accent); color: #06101c; }
 .graph-panel .gp-legend { margin-left: auto; display: flex; gap: 12px; font-size: 11px; color: var(--muted); white-space: nowrap; }
 .graph-panel .gp-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
-.gp-attribution { color: var(--muted); font-size: 10px; white-space: nowrap; text-decoration: none; }
-.gp-attribution:hover, .gp-attribution:focus-visible { color: var(--accent); text-decoration: underline; }
 .spot-live { flex: 0 0 auto; min-height: 32px; border: 1px solid var(--accent); background: #12334a; color: var(--text); border-radius: 8px; padding: 5px 7px; cursor: pointer; font-size: 12px; font-weight: 800; white-space: nowrap; }
 .spot-live[hidden] { display: none; }
 .spot-live:hover, .spot-live[aria-expanded="true"] { background: #174661; }
@@ -303,13 +299,13 @@ header { min-height: 66px; padding: 8px 20px; display: flex; align-items: center
   .mobile-spot-values { grid-area: values; display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 9px; line-height: 1.1; white-space: nowrap; }
   .mobile-spot-values b { color: var(--text); }
   .mobile-spot-precip { color: var(--wind); }
-  #map, .map-legend, .map-transport, .map-model { display: none; }
+  #map, .map-legend, .map-attrib, .map-transport, .map-model { display: none; }
   .map-shell.mobile-map-open #map { display: block; }
   .map-shell.mobile-map-open .mobile-board { display: none; }
   .map-shell.mobile-map-open .mobile-map-toolbar { display: block; }
-  .map-shell.mobile-map-open .map-transport, .map-shell.mobile-map-open .map-legend, .map-shell.mobile-map-open .map-model { display: initial; }
+  .map-shell.mobile-map-open .map-transport, .map-shell.mobile-map-open .map-legend, .map-shell.mobile-map-open .map-attrib, .map-shell.mobile-map-open .map-model { display: initial; }
   .dir-settings { left: 8px; right: 8px; top: 8px; width: auto; transform: none; }
-  .graph-panel { position: fixed; inset: 0; width: auto; height: 100dvh; min-width: 0; min-height: 0; max-width: none; max-height: none; transform: none; resize: none; border-radius: 0; padding: 10px 10px calc(10px + env(safe-area-inset-bottom)); z-index: 700; }
+  .graph-panel { left: 0; right: 0; bottom: 0; width: auto; height: 100%; min-width: 0; min-height: 0; max-width: none; max-height: none; transform: none; resize: none; border-radius: 0; padding: 10px 10px calc(10px + env(safe-area-inset-bottom)); z-index: 700; }
   .graph-panel .gp-head { flex-wrap: wrap; }
   .graph-panel .gp-heading { width: 100%; }
   .graph-panel .gp-legend { margin-left: 0; }
@@ -328,23 +324,7 @@ header { min-height: 66px; padding: 8px 20px; display: flex; align-items: center
   .spot-table-block { min-width: 100%; margin-bottom: 8px; }
   .spot-table th { position: sticky; left: 0; z-index: 2; }
   .spot-table { font-size: 11px; }
-  .spot-table th, .spot-table td { min-width: 25px; width: 25px; padding-left: 2px; padding-right: 2px; }
-}
-
-@media (max-width: 760px) and (orientation: landscape) {
-  .graph-panel { padding: 8px 12px 6px; }
-  .graph-panel .gp-head { flex-wrap: nowrap; align-items: center; }
-  .graph-panel .gp-heading { width: auto; flex: 0 1 auto; }
-  .graph-panel .gp-legend { margin-left: auto; }
-  .graph-panel #graph { min-height: 0; }
-}
-
-@media (pointer: coarse) and (max-height: 600px) {
-  .graph-panel { position: fixed; inset: 0; width: auto; height: 100dvh; min-width: 0; min-height: 0; max-width: none; max-height: none; transform: none; resize: none; border-radius: 0; padding: 8px 12px 6px; z-index: 700; }
-  .graph-panel .gp-head { flex-wrap: nowrap; align-items: center; }
-  .graph-panel .gp-heading { width: auto; flex: 0 1 auto; }
-  .graph-panel .gp-legend { margin-left: auto; }
-  .graph-panel #graph { min-height: 0; }
+  .spot-table th, .spot-table td { min-width: 30px; width: 30px; }
 }
 
 @media (max-height: 900px) {

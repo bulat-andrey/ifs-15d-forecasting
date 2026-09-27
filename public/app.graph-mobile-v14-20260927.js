@@ -937,14 +937,6 @@ function clearSelection() {
   el('spotSummary').hidden = true;
   closeDirectionSettings();
   drawMarkers(curIdx);
-  if (mobileMapOpen) {
-    requestAnimationFrame(() => {
-      map.invalidateSize();
-      map.fitBounds(L.latLngBounds(S.spots.map(s => [s.lat, s.lon])), {
-        padding: [24, 24], maxZoom: 10, animate: false
-      });
-    });
-  }
 }
 
 function setDetailView(view) {

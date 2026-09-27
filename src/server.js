@@ -249,9 +249,7 @@ const server = http.createServer((req, res) => {
     if (err) { res.writeHead(404, { 'content-type': 'text/plain' }); return res.end('not found'); }
     const ext = path.extname(fp);
     const headers = { 'content-type': MIME[ext] || 'application/octet-stream' };
-    // HTML must always revalidate so new ?v= asset URLs are picked up; the versioned
-    // JS/CSS/assets are safe to cache long-term (their URL changes when they change).
-    headers['cache-control'] = ext === '.html' ? 'no-cache' : 'public, max-age=31536000';
+    headers['cache-control'] = ['.html', '.js', '.css'].includes(ext) ? 'no-cache' : 'public, max-age=31536000';
     res.writeHead(200, headers);
     res.end(buf);
   });
