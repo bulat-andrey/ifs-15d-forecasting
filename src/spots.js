@@ -1,4 +1,4 @@
-// The 13 Polish Baltic kite spots - single source of truth.
+// The 14 Polish Baltic kite spots - single source of truth.
 // lat/lon drive the Open-Meteo request.
 // dx: display-only side hint for the front-end label placer - its SIGN picks the
 //     preferred side (dx<0 = prefer west, e.g. spots near the right edge). The
@@ -26,6 +26,7 @@ module.exports = [
   { name: 'Puck',           lat: 54.724900, lon: 18.418000, dx: -118, dy: -40, wg: 'https://www.windguru.cz/48009', goodFrom: [[322, 142]], externalLinks: [
     { type: 'camera', label: 'Nadmorski24', location: 'Puck beach and pier', url: 'https://nadmorski24.pl/kamery/27-puck-plaza-przystan-molo-puck', proximity: 'direct' }
   ] },
+  { name: 'Kuźnica',        lat: 54.733806, lon: 18.579478, dx:  12, dy:  12, wg: 'https://www.windguru.cz/1356177' },
   { name: 'Jastarnia',      lat: 54.698500, lon: 18.663300, dx:  12, dy: -40, place: 'E', nudge: [-82, -45], wg: 'https://www.windguru.cz/1355694', goodFrom: [[120, 300]], externalLinks: [
     { type: 'observations', label: 'Maritime Office', location: 'Jastarnia station', url: maritime, proximity: 'direct' }
   ] },
