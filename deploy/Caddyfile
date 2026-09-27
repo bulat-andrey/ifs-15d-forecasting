@@ -1,4 +1,4 @@
-# Baltic Wind — Caddy reverse proxy with automatic HTTPS.
+# GoKite — Caddy reverse proxy with automatic HTTPS.
 # The domain's A record points at this server.
 # Caddy fetches and renews a Let's Encrypt certificate automatically.
 
@@ -11,7 +11,7 @@ gokite.pomorskie.pl {
 	header @assets Cache-Control "public, max-age=3600"
 
 	log {
-		output file /var/log/caddy/baltic-wind.log
+		output file /var/log/caddy/gokite.log
 		format console
 	}
 }

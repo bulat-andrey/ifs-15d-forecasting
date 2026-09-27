@@ -32,44 +32,71 @@ seconds and should not be run repeatedly in a tight loop.
 The production layout is:
 
 ```text
-Internet -> Caddy container (TLS) -> host:8787 -> src/server.js
+Internet -> Caddy container (TLS) -> host:8787 -> gokite.service
 ```
 
 Caddy stays running during an application update. The current single-process
 setup has a short possible gap while Node is replaced; it is not zero-downtime.
 
-1. Pull only the expected branch and inspect the result:
+## Install the GoKite systemd service
 
-   ```bash
-   cd /home/bulat/workplace/sultansradar
-   git pull --ff-only origin master
-   node --check src/server.js
-   git diff HEAD^ -- src/spots.js README.md docs/deployment.md
-   ```
+For a persistent production installation, copy the repository to `/opt/gokite`
+and run the service as the dedicated `gokite` user. The unit uses a system-wide
+Node 18+ binary at `/usr/local/bin/node-gokite` and binds to port `8787` for the
+Docker-based Caddy reverse proxy; Caddy remains the public HTTPS entry point.
 
-2. Stop the old GoKite process, then start the new one detached on the port
-   Caddy expects. Do not change the DNS address or Caddy container for an app
-   code update:
+```bash
+sudo useradd --system --home /opt/gokite --shell /usr/sbin/nologin gokite || true
+sudo chown -R gokite:gokite /opt/gokite
+sudo cp deploy/gokite.service /etc/systemd/system/gokite.service
+sudo systemctl daemon-reload
+sudo systemctl enable gokite
+```
 
-   ```bash
-   pkill -f '/home/bulat/workplace/sultansradar/src/server.js' || true
-   setsid env HOST=0.0.0.0 PORT=8787 NODE_ENV=production \
-     node /home/bulat/workplace/sultansradar/src/server.js \
-     >/tmp/sultansradar-live.log 2>&1 < /dev/null &
-   ```
+During the one-time handoff, stop the manually detached Node process first,
+then start systemd and verify it before testing the public URL:
 
-3. Wait for the initial model fetch and verify both local and public health:
+```bash
+sudo pkill -f '/opt/gokite/src/server.js' || true
+sudo systemctl start gokite
+sudo systemctl status gokite --no-pager
+curl -fsS http://127.0.0.1:8787/api/health
+sudo journalctl -u gokite -n 50 --no-pager
+```
 
-   ```bash
-   until curl -fsS http://127.0.0.1:8787/api/health; do sleep 2; done
-   curl -fsS https://gokite.pomorskie.pl/api/health
-   curl -fsS https://gokite.pomorskie.pl/api/forecast \
-     | node -e "let d=''; process.stdin.on('data', x => d += x).on('end', () => { const j=JSON.parse(d); console.log(j.spots.map(s => s.name).join(', ')); })"
-   ```
+After this handoff, deploys use `sudo systemctl restart gokite` and logs are
+available with `sudo journalctl -u gokite -f`. Caddy does not need to reload for
+normal application or forecast-code changes.
 
-   A healthy response has HTTP `200` and `ok: true`. During cold start,
-   `/api/health` intentionally returns `503`; wait rather than restarting in a
-   loop. Check `/tmp/sultansradar-live.log` if it remains unhealthy.
+## Deploy an update
+
+Pull and validate the revision in the working copy, then sync it to the
+systemd installation. The current live process remains active until the final
+restart:
+
+```bash
+cd /home/bulat/workplace/sultansradar
+git pull --ff-only origin master
+node --check src/server.js
+sudo rsync -a --delete --exclude .git ./ /opt/gokite/
+sudo chown -R gokite:gokite /opt/gokite
+sudo cp /opt/gokite/deploy/gokite.service /etc/systemd/system/gokite.service
+sudo systemctl daemon-reload
+```
+
+Restart the app and wait for the cache to become healthy:
+
+```bash
+sudo systemctl restart gokite
+until curl -fsS http://127.0.0.1:8787/api/health; do sleep 2; done
+curl -fsS https://gokite.pomorskie.pl/api/health
+curl -fsS https://gokite.pomorskie.pl/api/forecast \
+  | node -e "let d=''; process.stdin.on('data', x => d += x).on('end', () => { const j=JSON.parse(d); console.log(j.spots.map(s => s.name).join(', ')); })"
+```
+
+A healthy response has HTTP `200` and `ok: true`. During cold start,
+`/api/health` intentionally returns `503`; wait rather than restarting in a
+loop. Check `sudo journalctl -u gokite -n 50 --no-pager` if it remains unhealthy.
 
 ## Safer future deployment
 

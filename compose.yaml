@@ -1,5 +1,5 @@
 services:
-  app:
+  gokite:
     build: .
     command: npm run dev
     environment:

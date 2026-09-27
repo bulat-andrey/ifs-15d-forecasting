@@ -74,6 +74,7 @@ const modelLabel = id => {
   const m = S && S.models && S.models.find(x => x.id === id);
   return (m && m.label) || modelShort(id);
 };
+const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 
 const el = id => document.getElementById(id);
 const THRESHOLD_KEY = 'sultansradar.thresholdKt';
@@ -150,12 +151,43 @@ async function boot() {
   el('loading').hidden = true;
 
   const fmtModelTime = iso => new Date(iso).toLocaleString('en-GB', { timeZone: S.timezone || 'Europe/Warsaw', hour12: false, day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const fmtClock = iso => new Date(iso).toLocaleTimeString('en-GB', { timeZone: S.timezone || 'Europe/Warsaw', hour12: false, hour: '2-digit', minute: '2-digit' });
+  const nextModelUpdate = model => {
+    if (!model?.availability || !model.updateIntervalSeconds) return null;
+    let nextMs = Date.parse(model.availability) + model.updateIntervalSeconds * 1000;
+    while (nextMs <= Date.now()) nextMs += model.updateIntervalSeconds * 1000;
+    return new Date(nextMs).toISOString();
+  };
+  const hoursUntil = iso => {
+    const hours = (Date.parse(iso) - Date.now()) / 3_600_000;
+    return hours < 1 ? '<1' : String(Math.round(hours));
+  };
   const fetched = S.generated ? new Date(S.generated).toLocaleString('en-GB', { timeZone: S.timezone || 'Europe/Warsaw', hour12: false }) : '—';
-  const init = S.model_run ? `Init ${fmtModelTime(S.model_run)}` : 'Init —';
-  const updated = S.model_availability ? `Updated ${fmtModelTime(S.model_availability)}` : 'Updated —';
-  const next = S.model_next_update_expected ? `Next ~${fmtModelTime(S.model_next_update_expected)}` : '';
-  el('updated').textContent = (S.stale ? '⚠ stale · ' : '') + [init, updated, next].filter(Boolean).join(' · ');
-  el('updated').title = `Our server fetched this forecast: ${fetched}`;
+  const iconD2 = S.models?.find(m => m.id === 'icon_d2');
+  const iconD2Available = iconD2?.availability ? fmtClock(iconD2.availability) : '—';
+  const iconD2Fetched = iconD2?.fetched ? fmtClock(iconD2.fetched) : '—';
+  const iconD2Next = nextModelUpdate(iconD2);
+  const nextLabel = model => {
+    const nextTime = nextModelUpdate(model);
+    return nextTime ? `${fmtClock(nextTime)} local (~${hoursUntil(nextTime)} h)` : '—';
+  };
+  const iconD2Status = iconD2?.availability && iconD2?.fetched
+    ? `ICON-D2: Avail (upd) ${iconD2Available} (${iconD2Fetched}) local, next ${nextLabel(iconD2)}`
+    : 'ICON-D2 update unavailable';
+  el('updated').textContent = (S.stale ? '⚠ stale · ' : '') + iconD2Status;
+  el('updated').title = `ICON-D2 availability and GoKite update time. Overall server fetch: ${fetched}`;
+  el('mobileForecastStatus').textContent = iconD2Status;
+  el('mobileForecastStatus').title = `ICON-D2 availability and GoKite update time. Overall server fetch: ${fetched}`;
+  const modelInfoBody = el('modelInfoBody');
+  modelInfoBody.innerHTML = (S.models || []).map(m => {
+    const nextModel = nextModelUpdate(m);
+    const rows = [
+      ['Model', m.label || m.short || modelShort(m.id)],
+      ['Avail (upd)', m.availability && m.fetched ? `${fmtClock(m.availability)} (${fmtClock(m.fetched)})` : '—'],
+      ['Next', nextLabel(m)]
+    ];
+    return `<div class="model-info-item"><strong>${escapeHtml(m.short || modelShort(m.id))}</strong>${rows.map(([label, value]) => `<div><span>${escapeHtml(label)}</span><b>${escapeHtml(value)}</b></div>`).join('')}</div>`;
+  }).join('');
   if (S.stale) el('updated').classList.add('stale');
   if (S.blend && S.blend.length) {
     el('modelBtn').textContent = S.blend.join(' → ');
@@ -164,6 +196,16 @@ async function boot() {
   setupUserSettings();
   setupThresholdControl();
   setupMarkerStyleControl();
+  const modelInfoPanel = el('modelInfoPanel');
+  const closeModelInfo = () => { modelInfoPanel.hidden = true; el('modelBtn').setAttribute('aria-expanded', 'false'); };
+  el('modelBtn').onclick = () => {
+    modelInfoPanel.hidden = !modelInfoPanel.hidden;
+    el('modelBtn').setAttribute('aria-expanded', String(!modelInfoPanel.hidden));
+  };
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.model-info')) closeModelInfo();
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModelInfo(); });
 
   if (map0) {
     addMarkers(map0);
