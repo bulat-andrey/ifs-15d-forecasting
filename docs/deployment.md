@@ -78,7 +78,7 @@ restart:
 cd /home/bulat/workplace/sultansradar
 git pull --ff-only origin master
 node --check src/server.js
-sudo rsync -a --delete --exclude .git ./ /opt/gokite/
+sudo rsync -a --delete --exclude .git --exclude '.env*' ./ /opt/gokite/
 sudo chown -R gokite:gokite /opt/gokite
 sudo cp /opt/gokite/deploy/gokite.service /etc/systemd/system/gokite.service
 sudo systemctl daemon-reload
