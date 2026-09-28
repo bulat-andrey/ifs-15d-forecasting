@@ -77,17 +77,26 @@ const CF = cfg.CROSSFADE_H > 0 ? cfg.CROSSFADE_H : 1;
 const HALF = CF / 2;
 // 0 below (b-HALF), ramps linearly to 1 above (b+HALF)
 const rampUp = (x, b) => Math.min(1, Math.max(0, (x - (b - HALF)) / CF));
-// Per-model blend weight at a given grid hour (from local midnight), from the seam boundaries.
-function modelWeights(gridH) {
+// Per-model blend weight at a given rolling lead hour, from the seam boundaries.
+function modelWeights(leadH) {
   return MODELS.map((m, k) => {
     let w = 1;
-    if (k > 0) w *= rampUp(gridH, BOUNDARIES[k - 1]);          // fade in at the lower seam
-    if (k < MODELS.length - 1) w *= (1 - rampUp(gridH, BOUNDARIES[k])); // fade out at the upper seam
+    if (k > 0) w *= rampUp(leadH, BOUNDARIES[k - 1]);          // fade in at the lower seam
+    if (k < MODELS.length - 1) w *= (1 - rampUp(leadH, BOUNDARIES[k])); // fade out at the upper seam
     return w;
   });
 }
 
 const tms = iso => Date.parse(iso.slice(0, 16) + ':00Z');
+
+// Match the current instant to Open-Meteo's local wall-clock ISO timeline.
+function localWallMs(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: cfg.TIMEZONE, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'
+  }).formatToParts(date).reduce((o, p) => { if (p.type !== 'literal') o[p.type] = p.value; return o; }, {});
+  return Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day), Number(parts.hour), Number(parts.minute), Number(parts.second));
+}
 
 // Merge the latest per-model raw responses into one blended payload.
 function buildBlend() {
@@ -100,6 +109,7 @@ function buildBlend() {
     const baseSpot = (rawByModel[base.id] && rawByModel[base.id][si]) || {};
     const time = (baseSpot.hourly && baseSpot.hourly.time) || [];
     const gridStart = time.length ? tms(time[0]) : 0; // local midnight of day 0
+    const nowLeadH = (localWallMs() - gridStart) / 3.6e6;
 
     // Per-model time→index lookup for this spot (models requested separately => own grids).
     const lut = MODELS.map(m => {
@@ -115,8 +125,8 @@ function buildBlend() {
 
     for (let j = 0; j < time.length; j++) {
       const t = time[j];
-      const gridH = (tms(t) - gridStart) / 3.6e6; // hours from local midnight → matches seam boundaries
-      const w = modelWeights(gridH);
+      const leadH = (tms(t) - gridStart) / 3.6e6 - nowLeadH;
+      const w = modelWeights(leadH);
 
       // Resolve each model's row index + effective (availability-gated) weight; track dominant.
       let dom = -1, domW = -1;
