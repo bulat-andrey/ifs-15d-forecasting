@@ -77,11 +77,11 @@ The default blend is:
 
 | Lead time | Model |
 |---|---|
-| 0-48 h | ICON-D2 2.2 km |
+| next 0-48 h | ICON-D2 2.2 km |
 | 48-120 h | ICON-EU 7 km |
 | 120 h+ | ECMWF IFS 9 km |
 
-`CROSSFADE_H` controls a linear blend around model seams so the graph does not jump sharply
+`CROSSFADE_H` controls a linear blend around rolling model seams so the graph does not jump sharply
 when control passes from one model to the next.
 
 ## Deploy on a small Linux server

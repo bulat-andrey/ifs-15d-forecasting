@@ -7,6 +7,7 @@ const WIND_COLORS = ['#73879c', '#25d88a', '#b7de36', '#f2bc35', '#ff713f', '#e8
 const windColor = s =>
   s < threshold ? WIND_COLORS[0] : s < threshold + 6 ? WIND_COLORS[1] : s < threshold + 13 ? WIND_COLORS[2] :
   s < threshold + 20 ? WIND_COLORS[3] : s < threshold + 26 ? WIND_COLORS[4] : s < threshold + 33 ? WIND_COLORS[5] : WIND_COLORS[6];
+const gustColor = (wind, gust) => windColor(wind) === WIND_COLORS[0] ? WIND_COLORS[0] : windColor(gust);
 const COMPASS = ['N','NE','E','SE','S','SW','W','NW'];
 const DIRECTION_EDGE_TOLERANCE_DEG = 5;
 // Open-Meteo gives the meteorological direction wind comes FROM.
@@ -1090,6 +1091,7 @@ function setupGraphRangeControl() {
 
 function renderSpotDetail(name, view = detailView) {
   detailView = view;
+  el('graphPanel').classList.toggle('table-mode', view === 'table');
   el('tableView').classList.toggle('active', view === 'table');
   el('graphView').classList.toggle('active', view === 'graph');
   el('spotTable').hidden = view !== 'table';
@@ -1145,7 +1147,7 @@ function renderSpotTable(name) {
       timeCells += `<td class="${c}" title="${title}">${t.slice(11, 13)}</td>`;
       modelCells += `<td class="${c} model-cell" title="${modelLabel(mid)}"><i style="background:${modelColor(mid)}"></i></td>`;
       windCells += `<td class="${c} wind-cell" title="${title}" style="background:${windColor(wind)}">${wind}</td>`;
-      gustCells += `<td class="${c} gust-cell" title="${title}" style="background:${windColor(gust)}">${gust}</td>`;
+       gustCells += `<td class="${c} gust-cell" title="${title}" style="background:${gustColor(wind, gust)}">${gust}</td>`;
       dirCells += `<td class="${c} ${dirOk ? 'dir-good' : 'dir-bad'}" title="${compassFrom(deg)} · ${Math.round(deg)}° · ${directionStatus(s, deg)}"><span class="dir-arrow">${directionMarker(deg, wind)}</span><span class="dir-deg">${Math.round(deg)}°</span></td>`;
       tempCells += `<td class="${c} temp-cell">${temp}</td>`;
       precipCells += `<td class="${c} precip-cell">${precip > 0 ? precip : '-'}</td>`;

@@ -29,7 +29,7 @@ module.exports = {
     { id: 'icon_eu',   meta: 'dwd_icon_eu', label: 'ICON-EU 7 km',   shortLabel: 'ICON-EU', days: 6,  useUntilH: 120 },
     { id: process.env.OPENMETEO_MODEL || 'ecmwf_ifs', meta: 'ecmwf_ifs', label: 'ECMWF IFS 9 km', shortLabel: 'ECMWF', days: Number(process.env.FORECAST_DAYS || 15), useUntilH: Infinity }
   ],
-  CROSSFADE_H: Number(process.env.CROSSFADE_H || 6), // width of the linear blend window at each model seam
+  CROSSFADE_H: Number(process.env.CROSSFADE_H || 4), // width of the linear blend window at each model seam
 
   // Kiteable sustained-wind threshold, in knots.
   KITE_THRESHOLD_KT: Number(process.env.KITE_THRESHOLD_KT || 12),

@@ -73,3 +73,7 @@ module.exports = [
     { type: 'observations', label: 'Maritime Office', location: 'Krynica Morska lighthouse', url: maritime, proximity: 'direct' }
   ] }
 ];
+
+// Kuźnica sits near Jastarnia at wider map extents; prefer its label on the west side.
+module.exports.find(s => s.lat === 54.733806 && s.lon === 18.579478).dx = -12;
+module.exports.find(s => s.lat === 54.835108 && s.lon === 18.278059).place = 'NE';
