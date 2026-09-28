@@ -128,12 +128,12 @@
     <section class="graph-panel" id="graphPanel" hidden>
       <button class="gp-close" id="gpClose" aria-label="Close graph">✕</button>
       <div class="gp-head">
-        <div class="gp-heading"><b id="gpName">—</b><span id="gpSub">15-day forecast · daylight shaded</span></div>
+        <div class="gp-heading"><div class="gp-title-row"><b id="gpName">—</b><a class="gp-attribution" href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo · CC BY 4.0</a></div><span id="gpSub">15-day forecast · daylight shaded</span></div>
         <span class="view-toggle" aria-label="Spot detail view">
           <button id="tableView" type="button" class="active">Table</button>
           <button id="graphView" type="button">Graph</button>
         </span>
-        <span class="gp-legend">
+        <span class="gp-legend" id="gpLegend">
           <span><i style="background:var(--wind)"></i>wind</span>
           <span><i style="background:var(--gust)"></i>gusts</span>
           <span><i style="background:var(--precip)"></i>precip</span>
@@ -142,7 +142,6 @@
           <a class="spot-wg" id="gpWg" target="_blank" rel="noopener noreferrer" aria-label="Open Windguru Pro forecast" title="Open Windguru Pro forecast"><img src="/windguru.jpg" alt="" /><span>Windguru ↗</span></a>
           <button class="spot-live" id="gpLiveToggle" type="button" aria-controls="gpLivePanel" aria-expanded="false" hidden>Live</button>
         </span>
-        <a class="gp-attribution" href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo · CC BY 4.0</a>
       </div>
       <div class="gp-content">
         <div class="gp-forecast" id="gpForecast">
