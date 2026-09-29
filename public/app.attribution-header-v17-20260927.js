@@ -97,6 +97,9 @@ let dirOverrides = {};
 let dirRoseInvert = true;
 let dirDrag = null;
 let mobileMapOpen = false;
+let mobileStationsOpen = false;   // mobile "Stations" view (obs vs ICON-D2)
+let mobileStationPrevIdx = null;  // hour to restore when leaving the Stations view
+let mobileStationOpenId = null;   // station card expanded to show details
 let map, markerObjs = [];
 let timelineIdxs = [];
 
@@ -230,6 +233,7 @@ async function boot() {
   el('nextSlot').onclick = () => stepTimeline(1);
   el('mobileMapToggle').onclick = toggleMobileMap;
   el('mobileMapBack').onclick = toggleMobileMap;
+  el('mobileStationsToggle').onclick = () => toggleMobileStations();
   el('gpClose').onclick = clearSelection;
   setupGraphPanelDrag();
   el('tableView').onclick = () => setDetailView('table');
@@ -262,11 +266,10 @@ async function boot() {
   // Re-run label de-collision whenever the view changes (zoom changes disc spacing;
   // pan/resize change which labels would run off the edge).
   map0?.on('zoomend moveend resize', () => { if (S) drawMarkers(curIdx); });
-  // Live station boxes load after the forecast so they never delay the first paint.
-  if (map0) {
-    loadObservations();
-    setInterval(loadObservations, OBS_REFRESH_MS);
-  }
+  // Station readings load after the forecast so they never delay the first paint.
+  // They feed the map boxes and the mobile Stations view (which works without Leaflet).
+  loadObservations();
+  setInterval(loadObservations, OBS_REFRESH_MS);
 }
 
 function loadThreshold(fallback) {
@@ -563,7 +566,13 @@ async function loadObservations() {
     return;
   }
   syncStationMarkers();
-  if (S && times.length) drawMarkers(curIdx);
+  if (S && times.length) {
+    if (mobileStationsOpen && curIdx !== nowIndex()) update(nowIndex()); // the hour ticked over
+    else {
+      drawMarkers(curIdx);
+      if (mobileStationsOpen) renderMobileStations();
+    }
+  }
 }
 
 function syncStationMarkers() {
@@ -899,8 +908,30 @@ function fillSelected(name, i) {
   el('spotSummary').hidden = false;
 }
 
+function mobileTimeSlotHtml(i) {
+  const strongest = maxUsableWindAt(i);
+  const greenSpots = S.spots.filter(s => {
+    const speed = windAt(s, i), deg = s.hourly.wind_direction_10m[i];
+    return speed >= threshold && isDaylight(i) && directionOk(s, deg);
+  });
+  const good = greenSpots.length > 0;
+  const active = i === curIdx ? ' active' : '';
+  const height = Math.max(12, Math.min(100, strongest / 30 * 100));
+  const fallbackSpot = S.spots.find(s => s.name === 'Gdańsk Brzeźno');
+  const tempSpots = greenSpots.length ? greenSpots : (fallbackSpot ? [fallbackSpot] : []);
+  const tempValues = tempSpots.map(s => s.hourly.temperature_2m[i]).filter(v => v != null);
+  const temp = tempValues.length ? tempValues.reduce((sum, value) => sum + value, 0) / tempValues.length : null;
+  const precip = S.spots[0].hourly.precipitation[i];
+  const precipText = precip > 0 ? r(precip, 1) : '';
+  return `<button class="mobile-time-slot${good ? ' good' : ''}${active}" style="--wind-height:${height.toFixed(1)}%" type="button" data-time-idx="${i}" aria-label="${formatHour(i)}, ${r(strongest, 1)} knots, ${temp != null ? r(temp) + ' degrees' : 'temperature unavailable'}, ${precip > 0 ? r(precip, 1) + ' millimetres precipitation' : 'no precipitation'}${good ? ', kiteable period' : ''}">`
+    + `<span class="mobile-time-temp">${temp != null ? r(temp) + '°' : '—'}</span>`
+    + `<span class="mobile-wind-column"></span><span class="mobile-time-precip">${precipText}</span><small>${times[i].slice(11, 13)}</small></button>`;
+}
+
 function renderMobileOverview() {
   if (!S || !times.length) return;
+  if (mobileStationsOpen) { renderMobileStations(); return; }
+  el('mobileBoardTitle').textContent = 'Forecast overview';
   const date = times[curIdx].slice(0, 10);
   const dateText = new Date(`${date}T12:00:00Z`).toLocaleDateString('en-GB', {
     weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC'
@@ -913,25 +944,7 @@ function renderMobileOverview() {
     if (!dayIndexes.length) return '';
     const dayModels = [...new Set(dayIndexes.map(i => S.spots[0].hourly.model && S.spots[0].hourly.model[i]).filter(Boolean))];
     const modelText = dayModels.length ? ` [${dayModels.map(modelShort).join('/')}]` : '';
-    const slots = dayIndexes.map(i => {
-      const strongest = maxUsableWindAt(i);
-      const greenSpots = S.spots.filter(s => {
-        const speed = windAt(s, i), deg = s.hourly.wind_direction_10m[i];
-        return speed >= threshold && isDaylight(i) && directionOk(s, deg);
-      });
-      const good = greenSpots.length > 0;
-      const active = i === curIdx ? ' active' : '';
-      const height = Math.max(12, Math.min(100, strongest / 30 * 100));
-      const fallbackSpot = S.spots.find(s => s.name === 'Gdańsk Brzeźno');
-      const tempSpots = greenSpots.length ? greenSpots : (fallbackSpot ? [fallbackSpot] : []);
-      const tempValues = tempSpots.map(s => s.hourly.temperature_2m[i]).filter(v => v != null);
-      const temp = tempValues.length ? tempValues.reduce((sum, value) => sum + value, 0) / tempValues.length : null;
-      const precip = S.spots[0].hourly.precipitation[i];
-      const precipText = precip > 0 ? r(precip, 1) : '';
-      return `<button class="mobile-time-slot${good ? ' good' : ''}${active}" style="--wind-height:${height.toFixed(1)}%" type="button" data-time-idx="${i}" aria-label="${formatHour(i)}, ${r(strongest, 1)} knots, ${temp != null ? r(temp) + ' degrees' : 'temperature unavailable'}, ${precip > 0 ? r(precip, 1) + ' millimetres precipitation' : 'no precipitation'}${good ? ', kiteable period' : ''}">`
-        + `<span class="mobile-time-temp">${temp != null ? r(temp) + '°' : '—'}</span>`
-        + `<span class="mobile-wind-column"></span><span class="mobile-time-precip">${precipText}</span><small>${times[i].slice(11, 13)}</small></button>`;
-    }).join('');
+    const slots = dayIndexes.map(mobileTimeSlotHtml).join('');
     const weekend = [0, 6].includes(new Date(`${day}T12:00:00Z`).getUTCDay());
     return `<div class="mobile-time-day${weekend ? ' weekend' : ''}"><b title="Forecast model${modelText}">${dayName(day)}${modelText}</b><div class="mobile-time-slots">${slots}</div></div>`;
   }).join('');
@@ -959,7 +972,81 @@ function renderMobileOverview() {
   });
 }
 
+// ---- mobile "Stations" view: observed wind vs ICON-D2, like the spot list ----
+// Readings exist only for the present, so this view pins the timeline to the current hour.
+
+function toggleMobileStations(force, restoreHour = true) {
+  const open = typeof force === 'boolean' ? force : !mobileStationsOpen;
+  if (open === mobileStationsOpen) return;
+  mobileStationsOpen = open;
+  document.querySelector('.map-shell').classList.toggle('mobile-stations-open', open);
+  el('mobileSpotList').hidden = open;
+  el('mobileStationView').hidden = !open;
+  const btn = el('mobileStationsToggle');
+  btn.textContent = open ? 'Spots' : 'Stations';
+  btn.setAttribute('aria-pressed', String(open));
+  btn.setAttribute('aria-label', open ? 'Show forecast by spot' : 'Show station check');
+  if (open) {
+    mobileStationPrevIdx = curIdx;
+    if (!OBS) loadObservations();
+    update(nowIndex());
+  } else {
+    const back = restoreHour && mobileStationPrevIdx != null ? mobileStationPrevIdx : curIdx;
+    mobileStationPrevIdx = null;
+    update(back);
+  }
+}
+
+function renderMobileStations() {
+  const modelName = OBS?.model_label || 'ICON-D2';
+  const shortModel = modelName.replace(/^ICON-/, '');
+  const list = OBS?.stations || [];
+  const latest = list.length ? list.reduce((a, b) => (Date.parse(b.time) > Date.parse(a.time) ? b : a)).time : null;
+  const nowI = nowIndex();
+  el('mobileBoardTitle').textContent = 'Station check';
+  el('mobileBoardDate').textContent = latest
+    ? `Observed ${obsClock(latest)} vs ${modelName} at the same time`
+    : (OBS ? 'No station readings right now' : 'Loading station readings…');
+  el('mobileTime').textContent = latest ? obsClock(latest) : times[nowI].slice(11, 16);
+  el('mobileTimeZone').textContent = 'now';
+
+  // Timeline: current hour only.
+  el('mobileTimeList').innerHTML = `<div class="mobile-time-day now-only"><b>Now · obs vs ${escapeHtml(shortModel)}</b>`
+    + `<div class="mobile-time-slots">${mobileTimeSlotHtml(nowI)}</div></div>`;
+
+  if (!list.length) {
+    el('mobileStationList').innerHTML = `<p class="mobile-station-empty">${OBS ? 'No IMGW station near the spots is reporting wind at the moment.' : 'Loading…'}</p>`;
+    return;
+  }
+  el('mobileStationList').innerHTML = list.map(st => {
+    const m = st.model;
+    const stale = obsAgeMin(st) > OBS_STALE_MIN;
+    const open = st.id === mobileStationOpenId;
+    const delta = m ? m.speed_kt - st.speed_kt : null;
+    const dirOff = m && m.dir != null ? angleDiff(m.dir, st.dir) : null;
+    const aria = `${st.name}: observed ${Math.round(st.speed_kt)} knots from ${st.dir}°`
+      + (m ? `, ${modelName} ${Math.round(m.speed_kt)} knots from ${m.dir}°, difference ${signedKt(delta)} knots` : `, no ${modelName} value`);
+    const card = `<button class="mobile-station${stale ? ' stale' : ''}${open ? ' open' : ''}" type="button" data-station="${escapeHtml(st.id)}" aria-expanded="${open}" aria-label="${escapeHtml(aria)}">`
+      + `<span class="mobile-station-head"><i class="obs-square" aria-hidden="true"></i><strong>${escapeHtml(st.name)}</strong><time>${stale ? `${obsAgeMin(st)} min ago` : obsClock(st.time)}</time></span>`
+      + `<span class="mobile-station-row"><i>Obs</i><span class="obs-dir">${windArrow(st.dir)}</span><b style="color:${windColor(st.speed_kt)}">${ktPair(st.speed_kt, st.max_kt)}</b><small>${st.dir}°</small></span>`
+      + (m
+        ? `<span class="mobile-station-row"><i>${escapeHtml(shortModel)}</i><span class="obs-dir">${windArrow(m.dir)}</span><b style="color:${windColor(m.speed_kt)}">${ktPair(m.speed_kt, m.gust_kt)}</b><small>${m.dir != null ? m.dir + '°' : ''}</small>`
+          + `<em class="obs-delta ${deltaClass(delta)}">${signedKt(delta)}${dirOff != null && dirOff >= 30 ? ` <small>${dirOff}°</small>` : ''}</em></span>`
+        : `<span class="mobile-station-row"><i>${escapeHtml(shortModel)}</i><span class="obs-none">no data</span></span>`)
+      + `</button>`;
+    return card + (open ? `<div class="mobile-station-detail">${stationPopupHtml(st)}</div>` : '');
+  }).join('');
+  el('mobileStationList').querySelectorAll('[data-station]').forEach(button => {
+    button.onclick = () => {
+      mobileStationOpenId = mobileStationOpenId === button.dataset.station ? null : button.dataset.station;
+      renderMobileStations();
+    };
+  });
+}
+
 function toggleMobileMap() {
+  // Leaving the station view for the map keeps the current hour, so the map shows the station boxes too.
+  if (!mobileMapOpen && mobileStationsOpen) toggleMobileStations(false, false);
   mobileMapOpen = !mobileMapOpen;
   document.querySelector('.map-shell').classList.toggle('mobile-map-open', mobileMapOpen);
   el('mobileMapToggle').textContent = mobileMapOpen ? 'Forecast' : 'Map';
