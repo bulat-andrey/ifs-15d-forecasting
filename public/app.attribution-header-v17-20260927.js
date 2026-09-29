@@ -527,7 +527,7 @@ const OBS_MODE_KEY = 'sultansradar.obsMode';
 const OBS_REFRESH_MS = 5 * 60_000;
 const OBS_STALE_MIN = 40;
 const OBS_BOX_W = 116, OBS_BOX_H = 52, OBS_DOT_R = 5;
-const OBS_ATTRIBUTION = 'Stations: <a href="https://danepubliczne.imgw.pl" target="_blank" rel="noopener">IMGW-PIB</a>';
+const OBS_ATTRIBUTION = 'IMGW-PIB: <a href="https://danepubliczne.imgw.pl" target="_blank" rel="noopener">source</a>; data processed · Weathercloud: <a href="https://weathercloud.net" target="_blank" rel="noopener">source</a>';
 let OBS = null;
 let obsMode = 'now';
 let stationObjs = [];
@@ -711,15 +711,21 @@ function stationPopupHtml(st) {
   const diff = m
     ? `${signedKt(m.speed_kt - st.speed_kt)} kt${m.dir != null ? `, direction off by ${angleDiff(m.dir, st.dir)}°` : ''}`
     : '–';
+  const source = st.source_url
+    ? `<a href="${escapeHtml(st.source_url)}" target="_blank" rel="noopener">${escapeHtml(st.source || 'Station source')}</a>`
+    : escapeHtml(st.source || OBS?.source || 'Station');
+  const sourceNotice = st.source === 'IMGW-PIB'
+    ? 'Źródłem pochodzenia danych jest Instytut Meteorologii i Gospodarki Wodnej – Państwowy Instytut Badawczy. Dane IMGW-PIB zostały przetworzone.'
+    : '';
   return `<div class="obs-popup-body">`
     + `<b>${escapeHtml(st.name)}</b>`
-    + `<span class="obs-popup-sub">IMGW-PIB station · ${st.near_spot_km} km from ${escapeHtml(st.near_spot)}</span>`
+    + `<span class="obs-popup-sub">${source} · ${st.near_spot_km} km from ${escapeHtml(st.near_spot)}</span>`
     + `<dl>`
     + `<dt>Observed ${obsClock(st.time)}</dt><dd>${obsLine}</dd>`
     + `<dt>${escapeHtml(modelName)} ${m ? obsClock(m.time) : ''}</dt><dd>${modelLine}</dd>`
     + `<dt>${escapeHtml(modelName)} − observed</dt><dd>${diff}</dd>`
     + `</dl>`
-    + `<small>10-minute mean wind, reading ${age} min old. Raw, unverified IMGW-PIB data. The station is not at the spot, so use it to judge the model, not as the spot's wind.</small>`
+    + `<small>Raw, unverified station data, reading ${age} min old. This station is not necessarily at the spot, so use it to judge local conditions and the model, not as the spot's exact wind.${sourceNotice ? ` ${sourceNotice}` : ''}</small>`
     + `</div>`;
 }
 
