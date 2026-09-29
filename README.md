@@ -31,7 +31,7 @@ no backend database, no build step.
 
 | Path | What |
 |---|---|
-| `src/server.js` | Zero-dependency Node HTTP server: static hosting + blended `/api/forecast` + scheduled refresh |
+| `src/server.js` | Zero-dependency Node HTTP server: static hosting + blended `/api/forecast` + scheduled refresh + `/api/observations` (IMGW-PIB station wind near the spots, paired with ICON-D2 at the same point and time) |
 | `src/spots.js` | The 14 spots (coords + label offsets) — single source of truth |
 | `src/config.js` | Port, blend models, refresh cadence, kite threshold (all env-overridable) |
 | `public/index.html` · `app.js` · `styles.css` | The front-end |

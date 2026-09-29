@@ -197,6 +197,8 @@ async function boot() {
   setupUserSettings();
   setupThresholdControl();
   setupMarkerStyleControl();
+  obsMode = loadObsMode();
+  setupObsModeControl();
   const modelInfoPanel = el('modelInfoPanel');
   const closeModelInfo = () => { modelInfoPanel.hidden = true; el('modelBtn').setAttribute('aria-expanded', 'false'); };
   el('modelBtn').onclick = () => {
@@ -260,6 +262,11 @@ async function boot() {
   // Re-run label de-collision whenever the view changes (zoom changes disc spacing;
   // pan/resize change which labels would run off the edge).
   map0?.on('zoomend moveend resize', () => { if (S) drawMarkers(curIdx); });
+  // Live station boxes load after the forecast so they never delay the first paint.
+  if (map0) {
+    loadObservations();
+    setInterval(loadObservations, OBS_REFRESH_MS);
+  }
 }
 
 function loadThreshold(fallback) {
@@ -444,9 +451,9 @@ const DIRS = {
 
 // Label placement: spots with an explicit `place` hint are pinned to that side; the
 // rest are placed greedily (left→right) to avoid discs and already-placed labels.
-function computeLabelPlacements(entries) {
+function computeLabelPlacements(entries, extraDiscs = []) {
   const size = map.getSize(), cw = size.x, ch = size.y;
-  const discs = entries.map(e => ({ x: e.cx, y: e.cy, r: DISC_R }));
+  const discs = entries.map(e => ({ x: e.cx, y: e.cy, r: DISC_R })).concat(extraDiscs);
   const placed = [], out = {};
   const clampRect = (e, off) => ({
     x: Math.max(EDGE, Math.min(cw - e.w - EDGE, e.cx + off.dx)),
@@ -490,7 +497,9 @@ function drawMarkers(i) {
     const pt = map.latLngToContainerPoint([s.lat, s.lon]);
     return { i: idx, s, speed, windLabel, w: labelWidth(s.name, windLabel), cx: pt.x, cy: pt.y, prefersLeft: s.dx < 0, place: s.place, nudge: s.nudge };
   });
-  const place = computeLabelPlacements(entries);
+  const stationPts = stationsVisible(i) ? stationPoints() : [];
+  const place = computeLabelPlacements(entries, stationPts.map(p => ({ x: p.cx, y: p.cy, r: OBS_DOT_R + 2 })));
+  drawStations(stationPts, entries, place);
   entries.forEach(e => {
     const { s } = e;
     const deg = s.hourly.wind_direction_10m[i];
@@ -505,6 +514,204 @@ function drawMarkers(i) {
       + `<b style="margin-left:auto;color:${windColor(e.speed)}">${e.windLabel}</b></div></div>`;
     markerObjs[e.i].m.setIcon(L.divIcon({ className: '', html, iconSize: [0, 0], iconAnchor: [0, 0] }));
   });
+}
+
+// ---- live station boxes: IMGW observation vs ICON-D2 at the same point and time ----
+// Spots are round discs (forecast); stations are a small square dot at the exact site
+// plus a rectangular box with "observed now" and the model value for that moment.
+// The server pairs each reading with the model's nearest 15-minute step at the station.
+const OBS_MODE_KEY = 'sultansradar.obsMode';
+const OBS_REFRESH_MS = 5 * 60_000;
+const OBS_STALE_MIN = 40;
+const OBS_BOX_W = 116, OBS_BOX_H = 52, OBS_DOT_R = 5;
+const OBS_ATTRIBUTION = 'Stations: <a href="https://danepubliczne.imgw.pl" target="_blank" rel="noopener">IMGW-PIB</a>';
+let OBS = null;
+let obsMode = 'now';
+let stationObjs = [];
+let obsLayer = null;
+let obsAttributionOn = false;
+
+function loadObsMode() {
+  const v = localStorage.getItem(OBS_MODE_KEY);
+  return v === 'always' || v === 'off' ? v : 'now';
+}
+
+function setupObsModeControl() {
+  const select = el('obsModeSelect');
+  if (!select) return;
+  select.value = obsMode;
+  select.onchange = () => {
+    obsMode = ['now', 'always', 'off'].includes(select.value) ? select.value : 'now';
+    localStorage.setItem(OBS_MODE_KEY, obsMode);
+    drawMarkers(curIdx);
+  };
+}
+
+// 'now' = only while the timeline shows the current hour, since the boxes describe the present.
+function stationsVisible(i) {
+  if (!map || !obsLayer || !stationObjs.length || obsMode === 'off') return false;
+  return obsMode === 'always' || i === nowIndex();
+}
+
+async function loadObservations() {
+  try {
+    const res = await fetch('/api/observations', { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    OBS = await res.json();
+  } catch (e) {
+    console.warn('Station observations unavailable:', e.message);
+    return;
+  }
+  syncStationMarkers();
+  if (S && times.length) drawMarkers(curIdx);
+}
+
+function syncStationMarkers() {
+  if (!map || typeof L === 'undefined' || !OBS) return;
+  if (!obsLayer) obsLayer = L.layerGroup();
+  const byId = new Map(stationObjs.map(o => [o.st.id, o]));
+  const next = [];
+  (OBS.stations || []).forEach(st => {
+    let o = byId.get(st.id);
+    if (o) {
+      o.st = st;
+      o.m.setLatLng([st.lat, st.lon]);
+      byId.delete(st.id);
+    } else {
+      const m = L.marker([st.lat, st.lon], {
+        icon: L.divIcon({ className: '', html: '', iconSize: [0, 0], iconAnchor: [0, 0] }),
+        zIndexOffset: -500,
+        title: `${st.name}: observed wind vs ${OBS.model_label || 'model'}`
+      });
+      o = { st, m };
+      m.bindPopup(() => stationPopupHtml(o.st), { className: 'obs-popup', maxWidth: 270 });
+      obsLayer.addLayer(m);
+    }
+    next.push(o);
+  });
+  byId.forEach(o => obsLayer.removeLayer(o.m));
+  stationObjs = next;
+}
+
+function stationPoints() {
+  return stationObjs.map(o => {
+    const p = map.latLngToContainerPoint([o.st.lat, o.st.lon]);
+    return { o, cx: p.x, cy: p.y };
+  });
+}
+
+// Box placement: close to the station dot, avoiding spot discs, spot labels and other boxes.
+function placeObsBox(p, discs, occupied, size) {
+  const W = OBS_BOX_W, H = OBS_BOX_H;
+  const clamp = off => ({
+    x: Math.max(EDGE, Math.min(size.x - W - EDGE, p.cx + off.dx)),
+    y: Math.max(EDGE, Math.min(size.y - H - EDGE, p.cy + off.dy)),
+    w: W, h: H
+  });
+  let best = null, bestCost = Infinity;
+  for (const d of [7, 34, 64]) {
+    const cands = [
+      { dx: d, dy: -d - H }, { dx: d, dy: d }, { dx: -d - W, dy: -d - H }, { dx: -d - W, dy: d },
+      { dx: d, dy: -H / 2 }, { dx: -d - W, dy: -H / 2 }, { dx: -W / 2, dy: -d - H }, { dx: -W / 2, dy: d }
+    ];
+    for (const c of cands) {
+      const rect = clamp(c);
+      let cost = d * 3; // prefer staying next to the dot
+      for (const disc of discs) cost += discPenalty(disc, rect) * 2;
+      for (const q of occupied) cost += rectOverlap(rect, q) * 4;
+      if (cost < bestCost) { bestCost = cost; best = rect; }
+    }
+    if (bestCost <= d * 3) break; // found a clear spot at this distance
+  }
+  return best;
+}
+
+// Map overlays (legend, zoom, transport, model badge, attribution) in map container pixels,
+// so station boxes don't hide underneath them.
+function mapOverlayRects() {
+  const box = map.getContainer().getBoundingClientRect();
+  const sel = '.map-legend, .map-transport, .map-model, .leaflet-control-zoom, .leaflet-control-attribution';
+  return [...document.querySelectorAll(sel)].map(n => n.getBoundingClientRect())
+    .filter(b => b.width > 0 && b.height > 0)
+    .map(b => ({ x: b.left - box.left, y: b.top - box.top, w: b.width, h: b.height }));
+}
+
+function drawStations(pts, spotEntries, spotPlace) {
+  if (!map || !obsLayer) return;
+  const on = pts.length > 0;
+  if (on && !map.hasLayer(obsLayer)) obsLayer.addTo(map);
+  if (!on && map.hasLayer(obsLayer)) map.removeLayer(obsLayer);
+  if (map.attributionControl && on !== obsAttributionOn) {
+    if (on) map.attributionControl.addAttribution(OBS_ATTRIBUTION);
+    else map.attributionControl.removeAttribution(OBS_ATTRIBUTION);
+    obsAttributionOn = on;
+  }
+  if (!on) return;
+  const size = map.getSize();
+  const occupied = spotEntries.map(e => ({ x: e.cx + spotPlace[e.i].dx, y: e.cy + spotPlace[e.i].dy, w: e.w, h: LABEL_H }))
+    .concat(mapOverlayRects());
+  const discs = spotEntries.map(e => ({ x: e.cx, y: e.cy, r: DISC_R }))
+    .concat(pts.map(p => ({ x: p.cx, y: p.cy, r: OBS_DOT_R + 2 })));
+  [...pts].sort((a, b) => a.cx - b.cx).forEach(p => {
+    const rect = placeObsBox(p, discs, occupied, size);
+    occupied.push(rect);
+    const html = stationHtml(p.o.st, Math.round(rect.x - p.cx), Math.round(rect.y - p.cy));
+    p.o.m.setIcon(L.divIcon({ className: '', html, iconSize: [0, 0], iconAnchor: [0, 0] }));
+  });
+}
+
+const obsClock = iso => new Date(iso).toLocaleTimeString('en-GB', { timeZone: S?.timezone || 'Europe/Warsaw', hour12: false, hour: '2-digit', minute: '2-digit' });
+const obsAgeMin = st => Math.max(0, Math.round((Date.now() - Date.parse(st.time)) / 60_000));
+const angleDiff = (a, b) => { const d = Math.abs(normDeg(a) - normDeg(b)); return Math.min(d, 360 - d); };
+const signedKt = v => { const n = Math.round(v); return `${n > 0 ? '+' : n < 0 ? '−' : '±'}${Math.abs(n)}`; };
+// Model minus observed: negative = the model is too weak right now.
+const deltaClass = d => { const a = Math.abs(d); return a < 3 ? 'ok' : a < 6 ? 'warn' : 'bad'; };
+const ktPair = (speed, gust) => `${Math.round(speed)}${gust != null ? ` (${Math.round(gust)})` : ''}`;
+
+function stationHtml(st, dx, dy) {
+  const m = st.model, modelName = OBS?.model_label || 'Model';
+  const shortModel = modelName.replace(/^ICON-/, '');
+  const age = obsAgeMin(st);
+  const stale = age > OBS_STALE_MIN;
+  const delta = m ? m.speed_kt - st.speed_kt : null;
+  const dirOff = m && m.dir != null ? angleDiff(m.dir, st.dir) : null;
+  // Leader line from the station dot to the nearest point of the box, when it had to move away.
+  const nx = Math.max(dx, Math.min(0, dx + OBS_BOX_W)), ny = Math.max(dy, Math.min(0, dy + OBS_BOX_H));
+  const leader = Math.hypot(nx, ny) > OBS_DOT_R + 8
+    ? `<svg class="obs-leader" width="1" height="1" aria-hidden="true"><line x1="0" y1="0" x2="${nx}" y2="${ny}"/></svg>` : '';
+  const aria = `${st.name}: observed ${Math.round(st.speed_kt)} knots from ${st.dir}°`
+    + (m ? `, ${modelName} ${Math.round(m.speed_kt)} knots from ${m.dir}°` : `, no ${modelName} value`);
+  return `<div class="obs-pin${stale ? ' stale' : ''}">`
+    + leader
+    + `<div class="obs-dot" aria-hidden="true"></div>`
+    + `<div class="obs-box" style="left:${dx}px;top:${dy}px;width:${OBS_BOX_W}px;height:${OBS_BOX_H}px" role="img" aria-label="${escapeHtml(aria)}">`
+    + `<div class="obs-head"><span>${escapeHtml(st.name)}</span><time>${stale ? `${age} min ago` : obsClock(st.time)}</time></div>`
+    + `<div class="obs-row"><i>Obs</i><span class="obs-dir">${windArrow(st.dir)}</span><b style="color:${windColor(st.speed_kt)}">${ktPair(st.speed_kt, st.max_kt)}</b></div>`
+    + (m
+      ? `<div class="obs-row model"><i>${escapeHtml(shortModel)}</i><span class="obs-dir">${windArrow(m.dir)}</span><b style="color:${windColor(m.speed_kt)}">${ktPair(m.speed_kt, m.gust_kt)}</b>`
+        + `<em class="obs-delta ${deltaClass(delta)}" title="${escapeHtml(modelName)} minus observed${dirOff != null ? `; direction off by ${dirOff}°` : ''}">${signedKt(delta)}${dirOff != null && dirOff >= 30 ? ` <small>${dirOff}°</small>` : ''}</em></div>`
+      : `<div class="obs-row model"><i>${escapeHtml(shortModel)}</i><span class="obs-none">no data</span></div>`)
+    + `</div></div>`;
+}
+
+function stationPopupHtml(st) {
+  const m = st.model, modelName = OBS?.model_label || 'Model';
+  const age = obsAgeMin(st);
+  const obsLine = `${r(st.speed_kt, 1)} kt${st.max_kt != null ? ` (max ${r(st.max_kt, 1)})` : ''} from ${compassFrom(st.dir)} ${st.dir}°`;
+  const modelLine = m ? `${r(m.speed_kt, 1)} kt${m.gust_kt != null ? ` (gust ${r(m.gust_kt, 1)})` : ''} from ${m.dir != null ? `${compassFrom(m.dir)} ${m.dir}°` : '–'}` : 'no data';
+  const diff = m
+    ? `${signedKt(m.speed_kt - st.speed_kt)} kt${m.dir != null ? `, direction off by ${angleDiff(m.dir, st.dir)}°` : ''}`
+    : '–';
+  return `<div class="obs-popup-body">`
+    + `<b>${escapeHtml(st.name)}</b>`
+    + `<span class="obs-popup-sub">IMGW-PIB station · ${st.near_spot_km} km from ${escapeHtml(st.near_spot)}</span>`
+    + `<dl>`
+    + `<dt>Observed ${obsClock(st.time)}</dt><dd>${obsLine}</dd>`
+    + `<dt>${escapeHtml(modelName)} ${m ? obsClock(m.time) : ''}</dt><dd>${modelLine}</dd>`
+    + `<dt>${escapeHtml(modelName)} − observed</dt><dd>${diff}</dd>`
+    + `</dl>`
+    + `<small>10-minute mean wind, reading ${age} min old. Raw, unverified IMGW-PIB data. The station is not at the spot, so use it to judge the model, not as the spot's wind.</small>`
+    + `</div>`;
 }
 
 // ---- daylight helpers (per-spot daily sunrise/sunset; use spot 0 as reference) ----

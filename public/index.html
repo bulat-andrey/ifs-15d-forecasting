@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>GoKite, Sułtani! — kite forecast</title>
-<link rel="stylesheet" href="/styles.attribution-header-v17-20260927.css?v=20260927-8" />
+<link rel="stylesheet" href="/styles.attribution-header-v17-20260927.css?v=20260929-1" />
 </head>
 <body>
 <div class="app">
@@ -58,6 +58,14 @@
             <option value="arrows">Arrows</option>
           </select>
         </label>
+        <label class="settings-field" title="Map boxes comparing IMGW station wind with ICON-D2 at the same place and time">
+          <span>Station check (obs vs ICON-D2)</span>
+          <select id="obsModeSelect" aria-label="Station observation boxes">
+            <option value="now">Current hour only</option>
+            <option value="always">Always</option>
+            <option value="off">Hidden</option>
+          </select>
+        </label>
         <div class="settings-feedback" aria-label="Feedback links">
           <span>Feedback</span>
           <div>
@@ -106,6 +114,8 @@
       <span><i style="background:#ff713f"></i><b id="leg4">32</b></span>
       <span><i style="background:#e83655"></i><b id="leg5">38</b></span>
       <span><i style="background:#a855f7"></i><b id="leg6">45+</b></span>
+      <span class="legend-kind" title="Round discs are forecasts for kite spots"><i class="legend-disc"></i><b>Spot forecast</b></span>
+      <span class="legend-kind" title="Square boxes are IMGW station readings compared with ICON-D2"><i class="legend-obs"></i><b>Station obs</b></span>
     </div>
     <div class="map-model" id="mapModel" hidden aria-live="polite"></div>
     <section class="dir-settings" id="dirSettings" hidden>
@@ -174,6 +184,6 @@
     <div class="days" id="days" aria-label="Forecast timeline" tabindex="0"></div>
   </footer>
 </div>
-<script src="/app.attribution-header-v17-20260927.js?v=20260927-17"></script>
+<script src="/app.attribution-header-v17-20260927.js?v=20260929-1"></script>
 </body>
 </html>
