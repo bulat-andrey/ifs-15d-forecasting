@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>GoKite, Sułtani! — kite forecast</title>
-<link rel="stylesheet" href="/styles.attribution-header-v17-20260927.css?v=20260929-1" />
+<link rel="stylesheet" href="/styles.attribution-header-v17-20260927.css?v=20260929-2" />
 </head>
 <body>
 <div class="app">
@@ -82,14 +82,21 @@
     <section class="mobile-board" id="mobileBoard" aria-label="Mobile forecast overview">
       <div class="mobile-board-head">
         <div>
-          <b>Forecast overview</b>
+          <b id="mobileBoardTitle">Forecast overview</b>
           <span id="mobileBoardDate">—</span>
           <span class="mobile-forecast-status" id="mobileForecastStatus" aria-live="polite">Forecast updates: loading…</span>
         </div>
-        <button class="mobile-map-toggle" id="mobileMapToggle" type="button" aria-label="Show map">Map</button>
+        <div class="mobile-board-actions">
+          <button class="mobile-map-toggle" id="mobileStationsToggle" type="button" aria-pressed="false" aria-label="Show station check">Stations</button>
+          <button class="mobile-map-toggle" id="mobileMapToggle" type="button" aria-label="Show map">Map</button>
+        </div>
       </div>
       <div class="mobile-overview">
         <div class="mobile-spot-list" id="mobileSpotList" aria-label="Forecast by spot"></div>
+        <div class="mobile-station-view" id="mobileStationView" hidden>
+          <div class="mobile-station-list" id="mobileStationList" aria-label="Station observations compared with ICON-D2"></div>
+          <p class="mobile-station-note">IMGW-PIB 10-minute readings (raw, unverified) vs ICON-D2 at the same place and time. Stations are not at the spots: use them to judge the model. Tap a station for details. Source: <a href="https://danepubliczne.imgw.pl" target="_blank" rel="noopener">IMGW-PIB</a>.</p>
+        </div>
       </div>
     </section>
     <div class="mobile-map-toolbar">
@@ -184,6 +191,6 @@
     <div class="days" id="days" aria-label="Forecast timeline" tabindex="0"></div>
   </footer>
 </div>
-<script src="/app.attribution-header-v17-20260927.js?v=20260929-1"></script>
+<script src="/app.attribution-header-v17-20260927.js?v=20260929-2"></script>
 </body>
 </html>

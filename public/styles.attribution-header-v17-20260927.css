@@ -357,6 +357,32 @@ header { min-height: 66px; padding: 8px 20px; display: flex; align-items: center
   .mobile-spot-values { grid-area: values; display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 9px; line-height: 1.1; white-space: nowrap; }
   .mobile-spot-values b { color: var(--text); }
   .mobile-spot-precip { color: var(--wind); }
+  .mobile-board-head > div:first-child { flex: 1 1 auto; min-width: 0; }
+  .mobile-board-head > div:first-child > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mobile-board-head .mobile-forecast-status { max-width: 100%; }
+  .mobile-board-head > .mobile-board-actions { display: flex; gap: 6px; flex: 0 0 auto; }
+  .mobile-board-actions .mobile-map-toggle { padding: 7px 10px; }
+  .mobile-stations-toggle[aria-pressed="true"], #mobileStationsToggle[aria-pressed="true"] { border-color: #e8f3ff; }
+  .mobile-spot-list[hidden], .mobile-station-view[hidden] { display: none; }
+  /* Station cards echo the map boxes: square corners, dashed outline, light left strip. */
+  .mobile-station-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; min-width: 0; }
+  .mobile-station { display: grid; gap: 3px; width: 100%; min-width: 0; min-height: 58px; padding: 5px 6px 5px 7px; border: 1px dashed rgba(232,243,255,.45); border-left: 3px solid #e8f3ff; border-radius: 3px; background: rgba(4,11,20,.92); color: var(--text); text-align: left; font: inherit; }
+  .mobile-station:active, .mobile-station.open { background: var(--surface-2); }
+  .mobile-station.stale { opacity: .6; }
+  .mobile-station.stale time { color: #f2bc35; }
+  .mobile-station-head { display: flex; align-items: center; gap: 5px; min-width: 0; }
+  .mobile-station-head strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; line-height: 1.1; }
+  .mobile-station-head time { margin-left: auto; flex: 0 0 auto; color: var(--muted); font-size: 9px; font-weight: 700; }
+  .obs-square { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 1px; background: #e8f3ff; border: 1.5px solid #06101c; box-shadow: 0 0 0 1px rgba(232,243,255,.55); }
+  .mobile-station-row { display: flex; align-items: center; gap: 4px; min-width: 0; font-size: 11px; line-height: 1; white-space: nowrap; }
+  .mobile-station-row i { width: 20px; flex: 0 0 auto; color: var(--muted); font-style: normal; font-size: 8.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; }
+  .mobile-station-row b { font-weight: 850; }
+  .mobile-station-row > small { color: var(--muted); font-size: 8.5px; font-weight: 700; }
+  .mobile-station-detail { grid-column: 1 / -1; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: rgba(6,16,28,.97); font-size: 12px; line-height: 1.35; }
+  .mobile-station-empty, .mobile-station-note { margin: 8px 2px; color: var(--muted); font-size: 10px; line-height: 1.35; }
+  .mobile-station-empty { grid-column: 1 / -1; font-size: 12px; }
+  .mobile-station-note a { color: var(--muted); }
+  .mobile-time-day.now-only > b { color: #e8f3ff; }
   #map, .map-legend, .map-transport, .map-model { display: none; }
   .map-shell.mobile-map-open #map { display: block; }
   .map-shell.mobile-map-open .mobile-board { display: none; }
