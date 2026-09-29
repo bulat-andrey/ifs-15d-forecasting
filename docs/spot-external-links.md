@@ -23,6 +23,7 @@ Curated provider pages with duplicate views removed. These are links, not propos
 | Hel | https://hel.webcamera.pl/ | Rotating camera at Hel port, bulwar and beach. |
 | Rewa | https://nadmorski24.pl/kamery/106-Rewa---Surfstacja-Rewa | Camera at the Rewa Surfstacja. |
 | Rewa | https://rewa.webcamera.pl/ | Camera overlooking Rewa and the Bay of Puck. |
+| Orłowo | https://nadmorski24.pl/kamery/2-gdynia-orlowo-gdynia | Live camera labeled Gdynia Orłowo. |
 | Hel; Jurata (nearby Jastarnia station); Krynica Morska; Gdańsk Brzeźno (regional readings) | https://www.umgdy.gov.pl/bezpieczenstwo-morskie/ruch-statkow/hydro-meteo/ | Maritime office observations, including Hel port and lighthouse, Jastarnia, Krynica lighthouse and Gdańsk stations. These are observations, not a forecast. |
 | Rewa | https://www.wiatrkadyny.pl/rewa/mIndex.php | Page titled “Rewa Pogoda Live”; wind and weather readings. **Check before use:** the page displays coordinates near Kadyny (54°18′ N, 19°28′ E), inconsistent with Rewa. |
 | Gdańsk Brzeźno | https://www.gdansk.pl/tv/Kamera-online-widok-na-plaze-w-Brzeznie,v,4134 | Camera showing Brzeźno pier and beach on the Gdańsk city page; the embedded player is from WebCamera.pl. |
@@ -32,9 +33,9 @@ Curated provider pages with duplicate views removed. These are links, not propos
 | Orle (nearby) | https://www.gdansk.pl/tv/Kamera-online-Narodowe-Centrum-Zeglarstwa-Gorki-Zachodnie,v,4139 | Camera at NCŻ Górki Zachodnie, west of Orle; Gdańsk.pl credits TASK for the feed. |
 | Orle (nearby) | https://www.gdansk.pl/tv/Kamera-online-widok-na-plaze-w-Stogach,v,4135 | Beach camera at Stogi, west of Orle; the embedded player is from WebCamera.pl. |
 | Orle (nearby) | https://holfuy.com/en/weather/1441 | NCŻ Górki Zachodnie wind station. |
-| Gdańsk Brzeźno (nearby) | https://www.gdansk.pl/tv/Kamera-online-Sopot-Molo,v,4149 | Camera at Sopot Molo on Gdańsk.pl; the feed is credited to TASK. |
-| Gdańsk Brzeźno (nearby) | https://autopay.pl/pogoda | Sopot marina live wind readings and camera. |
-| Gdańsk Brzeźno (nearby) | https://skz.sopot.pl/pogoda | SKŻ Sopot weather station and webcam link. |
+| Sopot (nearby) | https://www.gdansk.pl/tv/Kamera-online-Sopot-Molo,v,4149 | Camera at Sopot Molo on Gdańsk.pl; the feed is credited to TASK. |
+| Sopot (nearby) | https://autopay.pl/pogoda | Sopot marina live wind readings and camera. |
+| Sopot (nearby) | https://skz.sopot.pl/pogoda | SKŻ Sopot weather station and webcam link. |
 | Jastrzębia Góra (nearby) | https://nadmorski24.pl/kamery/24-karwia-plaza-karwia | Camera at nearby Karwia beach. |
 
 ## Relevant cameras outside the current spot list
@@ -42,10 +43,9 @@ Curated provider pages with duplicate views removed. These are links, not propos
 | Location | URL |
 | --- | --- |
 | Kąty Rybackie | https://katyrybackie.webcamera.pl/ |
-| Gdynia Orłowo | https://nadmorski24.pl/kamery/2-gdynia-orlowo-gdynia# |
 | Belgian spot (outside this app) | https://surfingelephant.be/nl/live/ |
 
-The Gdynia Orłowo URL's trailing `#` is unnecessary. The Belgian page could not be fetched during the page-identity check.
+The Belgian page could not be fetched during the page-identity check.
 
 ## Other weather or forecast resources outside the app area
 

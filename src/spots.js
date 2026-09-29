@@ -55,13 +55,16 @@ module.exports = [
     { type: 'camera', label: 'Nadmorski24', location: 'Rewa, Surfstacja', url: 'https://nadmorski24.pl/kamery/106-Rewa---Surfstacja-Rewa', proximity: 'direct' },
     { type: 'camera', label: 'WebCamera.pl', location: 'Rewa, Bay of Puck', url: 'https://rewa.webcamera.pl/', proximity: 'direct' }
   ] },
-  { name: 'Orłowo',         lat: 54.479248, lon: 18.564017, dx: -118, dy: -40, wg: 'https://www.windguru.cz/1356441', goodFrom: [[2, 179]] },
-  { name: 'Sopot',           lat: 54.433001, lon: 18.588798, dx:   12, dy:  12, wg: 'https://www.windguru.cz/1356442', goodFrom: [[315, 142]] },
-  { name: 'Gdańsk Brzeźno', lat: 54.410596, lon: 18.635737, dx: -150, dy: -40, wg: 'https://www.windguru.cz/1355695', goodFrom: [[275, 102]], externalLinks: [
-    { type: 'camera', label: 'Gdańsk.pl', location: 'Brzeźno pier and beach', url: 'https://www.gdansk.pl/tv/Kamera-online-widok-na-plaze-w-Brzeznie,v,4134', proximity: 'direct' },
+  { name: 'Orłowo',         lat: 54.479248, lon: 18.564017, dx: -118, dy: -40, wg: 'https://www.windguru.cz/1356441', goodFrom: [[2, 179]], externalLinks: [
+    { type: 'camera', label: 'Nadmorski24', location: 'Gdynia Orłowo', url: 'https://nadmorski24.pl/kamery/2-gdynia-orlowo-gdynia', proximity: 'direct' }
+  ] },
+  { name: 'Sopot',           lat: 54.433001, lon: 18.588798, dx:   12, dy:  12, wg: 'https://www.windguru.cz/1356442', goodFrom: [[315, 142]], externalLinks: [
     { type: 'camera', label: 'Gdańsk.pl', location: 'Sopot Molo', url: 'https://www.gdansk.pl/tv/Kamera-online-Sopot-Molo,v,4149', proximity: 'nearby' },
     { type: 'wind', label: 'Autopay', location: 'Sopot marina', url: 'https://autopay.pl/pogoda', proximity: 'nearby' },
     { type: 'wind', label: 'SKŻ Sopot', location: 'Sopot', url: 'https://skz.sopot.pl/pogoda', proximity: 'nearby' }
+  ] },
+  { name: 'Gdańsk Brzeźno', lat: 54.410596, lon: 18.635737, dx: -150, dy: -40, wg: 'https://www.windguru.cz/1355695', goodFrom: [[275, 102]], externalLinks: [
+    { type: 'camera', label: 'Gdańsk.pl', location: 'Brzeźno pier and beach', url: 'https://www.gdansk.pl/tv/Kamera-online-widok-na-plaze-w-Brzeznie,v,4134', proximity: 'direct' }
   ] },
   { name: 'Orle',           lat: 54.348843, lon: 18.876844, dx:  14, dy:  12, place: 'E', nudge: [-80, -45], wg: 'https://www.windguru.cz/1355696', goodFrom: [[275, 100]], externalLinks: [
     { type: 'camera', label: 'Gdańsk.pl', location: 'NCŻ Górki Zachodnie', url: 'https://www.gdansk.pl/tv/Kamera-online-Narodowe-Centrum-Zeglarstwa-Gorki-Zachodnie,v,4139', proximity: 'nearby' },
