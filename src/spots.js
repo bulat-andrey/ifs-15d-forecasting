@@ -1,4 +1,4 @@
-// The 14 Polish Baltic kite spots - single source of truth.
+// The 16 Polish Baltic kite spots - single source of truth.
 // lat/lon drive the Open-Meteo request.
 // dx: display-only side hint for the front-end label placer - its SIGN picks the
 //     preferred side (dx<0 = prefer west, e.g. spots near the right edge). The
@@ -55,6 +55,8 @@ module.exports = [
     { type: 'camera', label: 'Nadmorski24', location: 'Rewa, Surfstacja', url: 'https://nadmorski24.pl/kamery/106-Rewa---Surfstacja-Rewa', proximity: 'direct' },
     { type: 'camera', label: 'WebCamera.pl', location: 'Rewa, Bay of Puck', url: 'https://rewa.webcamera.pl/', proximity: 'direct' }
   ] },
+  { name: 'Orłowo',         lat: 54.479248, lon: 18.564017, dx: -118, dy: -40, wg: 'https://www.windguru.cz/1356441', goodFrom: [[2, 179]] },
+  { name: 'Sopot',           lat: 54.433001, lon: 18.588798, dx:   12, dy:  12, wg: 'https://www.windguru.cz/1356442', goodFrom: [[315, 142]] },
   { name: 'Gdańsk Brzeźno', lat: 54.410596, lon: 18.635737, dx: -150, dy: -40, wg: 'https://www.windguru.cz/1355695', goodFrom: [[275, 102]], externalLinks: [
     { type: 'camera', label: 'Gdańsk.pl', location: 'Brzeźno pier and beach', url: 'https://www.gdansk.pl/tv/Kamera-online-widok-na-plaze-w-Brzeznie,v,4134', proximity: 'direct' },
     { type: 'camera', label: 'Gdańsk.pl', location: 'Sopot Molo', url: 'https://www.gdansk.pl/tv/Kamera-online-Sopot-Molo,v,4149', proximity: 'nearby' },
