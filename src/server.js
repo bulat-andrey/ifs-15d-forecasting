@@ -234,15 +234,21 @@ async function tick() {
   else if (cache.stale) buildBlend(); // (re)build if we have any data but never blended
 }
 
-// ---- live station observations (IMGW-PIB telemetry) ----
-// One free, keyless call returns the latest 10-minute reading for ~800 Polish stations.
-// We keep only stations near a spot that currently report wind speed AND direction,
-// and pair each reading with ICON-D2 at the same point and time, so the map can show
-// "is the model right at the moment?".
+// ---- live station observations ----
+// IMGW provides the broad, keyless Polish station feed. A small number of public
+// Weathercloud stations are also useful references for the peninsula; their public
+// station pages request the same current-value endpoint used below. We keep the
+// providers explicit so the UI never presents Weathercloud readings as IMGW data.
 const IMGW_METEO_URL = 'https://danepubliczne.imgw.pl/api/data/meteo';
+const WEATHERCloud_STATIONS = [
+  // Weathercloud device name is "Marcello"; display the physical location in GoKite.
+  { id: '9927353435', name: 'Jastarnia', lat: 54.7026186, lon: 18.6647203, elevation: -2 },
+  { id: '7891525501', name: 'Jastrzębia Góra', lat: 54.8322222, lon: 18.3030556, elevation: 0 }
+];
+const WEATHERCloud_BASE_URL = 'https://app.weathercloud.net';
 const MS_TO_KT = 1.943844;
 const OBS_MODEL = MODELS.find(m => m.id === cfg.OBS_MODEL) || { id: cfg.OBS_MODEL, shortLabel: cfg.OBS_MODEL };
-let observations = { generated: null, source: 'IMGW-PIB', model: OBS_MODEL.id, model_label: OBS_MODEL.shortLabel, stations: [] };
+let observations = { generated: null, source: 'IMGW-PIB + Weathercloud', model: OBS_MODEL.id, model_label: OBS_MODEL.shortLabel, stations: [] };
 
 // Great-circle distance in km.
 function distanceKm(aLat, aLon, bLat, bLon) {
@@ -285,6 +291,8 @@ function parseObservations(rows) {
     return {
       id: String(o.kod_stacji),
       name: titleCase(String(o.nazwa_stacji || '')),
+      source: 'IMGW-PIB',
+      source_url: 'https://meteo.imgw.pl/',
       lat, lon,
       elevation,
       speed_kt: speed * MS_TO_KT,
@@ -296,6 +304,45 @@ function parseObservations(rows) {
       model: null
     };
   }).filter(Boolean).sort((a, b) => a.lon - b.lon);
+}
+
+async function fetchWeathercloudStation(station) {
+  const url = `${WEATHERCloud_BASE_URL}/device/values/${station.id}`;
+  const res = await fetch(url, {
+    headers: { ...UA, 'X-Requested-With': 'XMLHttpRequest', accept: 'application/json' },
+    signal: AbortSignal.timeout(20_000)
+  });
+  if (!res.ok) throw new Error(`${station.name}: HTTP ${res.status}`);
+  const data = await res.json();
+  const time = Number(data.epoch) * 1000;
+  const speed = num(data.wspdavg), dir = num(data.wdiravg);
+  if (!Number.isFinite(time) || speed == null || dir == null) return null;
+  if (Date.now() - time > cfg.OBS_MAX_AGE_MIN * 60_000) return null;
+  const near = nearestSpot(station.lat, station.lon);
+  return {
+    id: `weathercloud:${station.id}`,
+    name: station.name,
+    source: 'Weathercloud',
+    source_url: `${WEATHERCloud_BASE_URL}/d${station.id}`,
+    lat: station.lat,
+    lon: station.lon,
+    elevation: station.elevation,
+    speed_kt: speed * MS_TO_KT,
+    max_kt: num(data.wspdhi) == null ? null : num(data.wspdhi) * MS_TO_KT,
+    dir: ((dir % 360) + 360) % 360,
+    time: new Date(time).toISOString(),
+    near_spot: near.name,
+    near_spot_km: Math.round(near.km * 10) / 10,
+    model: null
+  };
+}
+
+async function fetchWeathercloudStations() {
+  const results = await Promise.all(WEATHERCloud_STATIONS.map(async station => {
+    try { return await fetchWeathercloudStation(station); }
+    catch (e) { console.error(`[obs Weathercloud] ${e.message}`); return null; }
+  }));
+  return results.filter(Boolean);
 }
 
 // ICON-D2 at the station points, native 15-minute steps, only a few hours around now.
@@ -349,12 +396,14 @@ async function refreshObservations() {
     console.error('[obs] failed:', e.message);
     return;
   }
+  const weathercloudStations = await fetchWeathercloudStations();
+  stations = stations.concat(weathercloudStations).sort((a, b) => a.lon - b.lon);
   if (stations.length) {
     try { await fetchStationModel(stations); }
     catch (e) { console.error(`[obs ${OBS_MODEL.id}] failed:`, e.message); } // still show observations
   }
-  observations = { generated: new Date().toISOString(), source: 'IMGW-PIB', model: OBS_MODEL.id, model_label: OBS_MODEL.shortLabel, stations };
-  console.log(`[obs] ${observations.generated} stations=${stations.length} with ${OBS_MODEL.shortLabel}=${stations.filter(s => s.model).length}`);
+  observations = { generated: new Date().toISOString(), source: 'IMGW-PIB + Weathercloud', model: OBS_MODEL.id, model_label: OBS_MODEL.shortLabel, stations };
+  console.log(`[obs] ${observations.generated} stations=${stations.length} IMGW=${stations.filter(s => s.source === 'IMGW-PIB').length} Weathercloud=${weathercloudStations.length} with ${OBS_MODEL.shortLabel}=${stations.filter(s => s.model).length}`);
 }
 
 const MIME = {
