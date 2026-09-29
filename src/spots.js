@@ -56,12 +56,14 @@ module.exports = [
     { type: 'camera', label: 'WebCamera.pl', location: 'Rewa, Bay of Puck', url: 'https://rewa.webcamera.pl/', proximity: 'direct' }
   ] },
   { name: 'Gdańsk Brzeźno', lat: 54.410596, lon: 18.635737, dx: -150, dy: -40, wg: 'https://www.windguru.cz/1355695', goodFrom: [[275, 102]], externalLinks: [
-    { type: 'camera', label: 'WebCamera.pl', location: 'Brzeźno pier and beach', url: 'https://gdansk.webcamera.pl/', proximity: 'direct' },
+    { type: 'camera', label: 'Gdańsk.pl', location: 'Brzeźno pier and beach', url: 'https://www.gdansk.pl/tv/Kamera-online-widok-na-plaze-w-Brzeznie,v,4134', proximity: 'direct' },
+    { type: 'camera', label: 'TASK', location: 'Sopot Molo', url: 'https://task.gda.pl/pl/multimedia/kamery/kamera-sopot-molo', proximity: 'nearby' },
     { type: 'wind', label: 'Autopay', location: 'Sopot marina', url: 'https://autopay.pl/pogoda', proximity: 'nearby' },
     { type: 'wind', label: 'SKŻ Sopot', location: 'Sopot', url: 'https://skz.sopot.pl/pogoda', proximity: 'nearby' }
   ] },
   { name: 'Orle',           lat: 54.348843, lon: 18.876844, dx:  14, dy:  12, place: 'E', nudge: [-80, -45], wg: 'https://www.windguru.cz/1355696', goodFrom: [[275, 100]], externalLinks: [
-    { type: 'camera', label: 'TASK', location: 'NCŻ Górki Zachodnie', url: 'https://task.gda.pl/pl/multimedia/kamery/kamera-gdansk-ncz', proximity: 'nearby' },
+    { type: 'camera', label: 'Gdańsk.pl', location: 'NCŻ Górki Zachodnie', url: 'https://www.gdansk.pl/tv/Kamera-online-Narodowe-Centrum-Zeglarstwa-Gorki-Zachodnie,v,4139', proximity: 'nearby' },
+    { type: 'camera', label: 'Gdańsk.pl', location: 'Stogi beach', url: 'https://www.gdansk.pl/tv/Kamera-online-widok-na-plaze-w-Stogach,v,4135', proximity: 'nearby' },
     { type: 'wind', label: 'Holfuy', location: 'NCŻ Górki Zachodnie', url: 'https://holfuy.com/en/weather/1441', proximity: 'nearby' }
   ] },
   { name: 'Jantar',         lat: 54.345340, lon: 19.038758, dx:  12, dy: -40, wg: null, goodFrom: [[269, 90]], externalLinks: [

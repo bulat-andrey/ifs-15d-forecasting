@@ -146,9 +146,10 @@ header { min-height: 66px; padding: 8px 20px; display: flex; align-items: center
 .graph-panel.table-mode .gp-legend { display: none; }
 .gp-attribution { color: var(--muted); font-size: 10px; white-space: nowrap; text-decoration: none; }
 .gp-attribution:hover, .gp-attribution:focus-visible { color: var(--accent); text-decoration: underline; }
-.spot-live { flex: 0 0 auto; min-height: 32px; border: 1px solid var(--accent); background: #12334a; color: var(--text); border-radius: 8px; padding: 5px 7px; cursor: pointer; font-size: 12px; font-weight: 800; white-space: nowrap; }
+.spot-live { flex: 0 0 auto; min-height: 32px; border: 1px solid var(--line); background: var(--surface); color: var(--text); border-radius: 8px; padding: 5px 7px; cursor: pointer; font-size: 12px; font-weight: 800; white-space: nowrap; }
 .spot-live[hidden] { display: none; }
-.spot-live:hover, .spot-live[aria-expanded="true"] { background: #174661; }
+.spot-live:hover { border-color: var(--accent); background: var(--surface-2); }
+.spot-live[aria-expanded="true"] { border-color: var(--accent); background: var(--accent); color: #06101c; }
 .spot-range { color: var(--safe); font-size: 11px; font-weight: 800; white-space: nowrap; }
 .gp-content { display: flex; flex: 1 1 auto; gap: 12px; min-height: 0; }
 .gp-forecast { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; min-height: 0; }

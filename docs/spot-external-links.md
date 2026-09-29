@@ -1,6 +1,6 @@
 # Spot webcams and weather links
 
-Curated provider pages with duplicate views removed. These are links, not proposed embed URLs. The original locally supplied links were checked on 25 September 2026; later camera additions were checked on 27 September 2026 for page identity. Live video playback and long-term availability were not verified. “Nearby” means useful context, not a camera or sensor at the app spot.
+Curated provider pages with duplicate views removed. These are links, not proposed embed URLs. The original locally supplied links were checked on 25 September 2026; later camera additions were checked on 27 and 29 September 2026 for page identity. Live video playback and long-term availability were not verified. “Nearby” means useful context, not a camera or sensor at the app spot.
 
 ## Matches for current app spots
 
@@ -25,12 +25,14 @@ Curated provider pages with duplicate views removed. These are links, not propos
 | Rewa | https://rewa.webcamera.pl/ | Camera overlooking Rewa and the Bay of Puck. |
 | Hel; Jurata (nearby Jastarnia station); Krynica Morska; Gdańsk Brzeźno (regional readings) | https://www.umgdy.gov.pl/bezpieczenstwo-morskie/ruch-statkow/hydro-meteo/ | Maritime office observations, including Hel port and lighthouse, Jastarnia, Krynica lighthouse and Gdańsk stations. These are observations, not a forecast. |
 | Rewa | https://www.wiatrkadyny.pl/rewa/mIndex.php | Page titled “Rewa Pogoda Live”; wind and weather readings. **Check before use:** the page displays coordinates near Kadyny (54°18′ N, 19°28′ E), inconsistent with Rewa. |
-| Gdańsk Brzeźno | https://gdansk.webcamera.pl/ | Camera showing Brzeźno pier and beach. |
+| Gdańsk Brzeźno | https://www.gdansk.pl/tv/Kamera-online-widok-na-plaze-w-Brzeznie,v,4134 | Camera showing Brzeźno pier and beach on the Gdańsk city page; the embedded player is from WebCamera.pl. |
 | Jantar | https://jantar.webcamera.pl/ | Camera overlooking Jantar's west beach. |
 | Krynica Morska | https://krynicahotel.pl/webcamera-3/ | Hotel Krynica webcam. The page does not state the camera's viewing direction in accessible text. |
 | Krynica Morska | https://krynicamorska.webcamera.pl/ | Rotating camera at the Baltic beach, entrance 26. |
-| Orle (nearby) | https://task.gda.pl/pl/multimedia/kamery/kamera-gdansk-ncz | Camera at NCŻ Górki Zachodnie, west of Orle. |
+| Orle (nearby) | https://www.gdansk.pl/tv/Kamera-online-Narodowe-Centrum-Zeglarstwa-Gorki-Zachodnie,v,4139 | Camera at NCŻ Górki Zachodnie, west of Orle; Gdańsk.pl credits TASK for the feed. |
+| Orle (nearby) | https://www.gdansk.pl/tv/Kamera-online-widok-na-plaze-w-Stogach,v,4135 | Beach camera at Stogi, west of Orle; the embedded player is from WebCamera.pl. |
 | Orle (nearby) | https://holfuy.com/en/weather/1441 | NCŻ Górki Zachodnie wind station. |
+| Gdańsk Brzeźno (nearby) | https://task.gda.pl/pl/multimedia/kamery/kamera-sopot-molo | TASK camera at Sopot Molo. |
 | Gdańsk Brzeźno (nearby) | https://autopay.pl/pogoda | Sopot marina live wind readings and camera. |
 | Gdańsk Brzeźno (nearby) | https://skz.sopot.pl/pogoda | SKŻ Sopot weather station and webcam link. |
 | Jastrzębia Góra (nearby) | https://nadmorski24.pl/kamery/24-karwia-plaza-karwia | Camera at nearby Karwia beach. |
