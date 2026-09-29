@@ -57,7 +57,7 @@ module.exports = [
   ] },
   { name: 'Gdańsk Brzeźno', lat: 54.410596, lon: 18.635737, dx: -150, dy: -40, wg: 'https://www.windguru.cz/1355695', goodFrom: [[275, 102]], externalLinks: [
     { type: 'camera', label: 'Gdańsk.pl', location: 'Brzeźno pier and beach', url: 'https://www.gdansk.pl/tv/Kamera-online-widok-na-plaze-w-Brzeznie,v,4134', proximity: 'direct' },
-    { type: 'camera', label: 'TASK', location: 'Sopot Molo', url: 'https://task.gda.pl/pl/multimedia/kamery/kamera-sopot-molo', proximity: 'nearby' },
+    { type: 'camera', label: 'Gdańsk.pl', location: 'Sopot Molo', url: 'https://www.gdansk.pl/tv/Kamera-online-Sopot-Molo,v,4149', proximity: 'nearby' },
     { type: 'wind', label: 'Autopay', location: 'Sopot marina', url: 'https://autopay.pl/pogoda', proximity: 'nearby' },
     { type: 'wind', label: 'SKŻ Sopot', location: 'Sopot', url: 'https://skz.sopot.pl/pogoda', proximity: 'nearby' }
   ] },
