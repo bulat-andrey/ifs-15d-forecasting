@@ -42,6 +42,15 @@ module.exports = {
   POST_RUN_DELAY_MIN: Number(process.env.POST_RUN_DELAY_MIN || 3), // wait this long after availability before fetching
   SAFETY_REFRESH_MIN: Number(process.env.SAFETY_REFRESH_MIN || 180), // force a refetch if metadata is unreachable this long
 
+  // Live observations from IMGW-PIB automatic stations (free, no API key). The API
+  // returns only the latest 10-minute reading per station, with UTC timestamps.
+  OBS_POLL_MIN: Number(process.env.OBS_POLL_MIN || 10),      // how often the server refreshes IMGW readings
+  OBS_MAX_AGE_MIN: Number(process.env.OBS_MAX_AGE_MIN || 180), // drop readings older than this
+  OBS_MAX_SPOT_KM: Number(process.env.OBS_MAX_SPOT_KM || 15),  // keep only stations this close to a spot
+  OBS_MAX_ELEVATION_M: Number(process.env.OBS_MAX_ELEVATION_M || 80), // skip inland hilltop sites (e.g. Rębiechowo, 146 m)
+  // Each station reading is paired with ICON-D2 at the same point and time (15-min data).
+  OBS_MODEL: process.env.OBS_MODEL || 'icon_d2',
+
   // Grid-cell preference: 'sea' biases toward the open-water cell (more representative
   // of the wind a kiter feels on the water). Use 'land' or 'nearest' to experiment.
   CELL_SELECTION: process.env.CELL_SELECTION || 'sea'
