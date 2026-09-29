@@ -56,7 +56,7 @@ module.exports = [
     { type: 'camera', label: 'WebCamera.pl', location: 'Rewa, Bay of Puck', url: 'https://rewa.webcamera.pl/', proximity: 'direct' }
   ] },
   { name: 'Orłowo',         lat: 54.479248, lon: 18.564017, dx: -118, dy: -40, wg: 'https://www.windguru.cz/1356441', goodFrom: [[20, 182]] },
-  { name: 'Sopot',           lat: 54.433001, lon: 18.588798, dx:   12, dy:  12, wg: 'https://www.windguru.cz/1356442', goodFrom: [[275, 102]] },
+  { name: 'Sopot',           lat: 54.433001, lon: 18.588798, dx:   12, dy:  12, wg: 'https://www.windguru.cz/1356442', goodFrom: [[135, 322]] },
   { name: 'Gdańsk Brzeźno', lat: 54.410596, lon: 18.635737, dx: -150, dy: -40, wg: 'https://www.windguru.cz/1355695', goodFrom: [[275, 102]], externalLinks: [
     { type: 'camera', label: 'WebCamera.pl', location: 'Brzeźno pier and beach', url: 'https://gdansk.webcamera.pl/', proximity: 'direct' },
     { type: 'wind', label: 'Autopay', location: 'Sopot marina', url: 'https://autopay.pl/pogoda', proximity: 'nearby' },
