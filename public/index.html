@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>GoKite, Sułtani! — kite forecast</title>
-<link rel="stylesheet" href="/styles.attribution-header-v17-20260927.css?v=20261002-1" />
+<link rel="stylesheet" href="/styles.attribution-header-v17-20260927.css?v=20261002-3" />
 </head>
 <body>
 <div class="app">
@@ -76,6 +76,20 @@
             <a href="https://github.com/bulat-andrey/ifs-15d-forecasting/issues/new?labels=enhancement&title=Feature%3A%20&body=What%20would%20you%20like%20GoKite%2C%20Su%C5%82tani!%20to%20do%3F%0A%0AWhy%20would%20it%20help%3F%0A" target="_blank" rel="noopener noreferrer">Request feature</a>
           </div>
         </div>
+        <div class="release-info">
+          <div class="release-version">GoKite <span id="appVersion">v1.1.0</span></div>
+          <button class="whats-new-toggle" id="whatsNewToggle" type="button" aria-controls="whatsNewPanel" aria-expanded="false">
+            What’s new <span class="new-badge" id="whatsNewBadge" hidden>New</span>
+          </button>
+          <div class="whats-new-panel" id="whatsNewPanel" hidden>
+            <b>Current release</b>
+            <ul>
+              <li>Live IMGW-PIB station observations near spots are compared with the forecast.</li>
+              <li>Mobile map labels now follow the visible map area.</li>
+              <li>Mobile map view includes quick Spots and Stations controls.</li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
   </header>
@@ -105,6 +119,7 @@
     <div class="mobile-map-toolbar">
       <button class="mobile-map-back" id="mobileMapBack" type="button" aria-label="Show spot table">Spots</button>
       <button class="mobile-map-back" id="mobileMapStations" type="button" aria-label="Show station check">Stations</button>
+      <button class="mobile-map-back" id="mobileMapObs" type="button" aria-label="Hide station overlays" aria-pressed="true">Obs: On</button>
     </div>
     <aside class="mobile-time-dock" aria-label="Forecast timeline">
       <div class="mobile-time-current"><strong id="mobileTime">—</strong><span id="mobileTimeZone">local</span></div>
@@ -195,6 +210,6 @@
     <div class="days" id="days" aria-label="Forecast timeline" tabindex="0"></div>
   </footer>
 </div>
-<script src="/app.attribution-header-v17-20260927.js?v=20261002-1"></script>
+<script src="/app.attribution-header-v17-20260927.js?v=20261002-3"></script>
 </body>
 </html>

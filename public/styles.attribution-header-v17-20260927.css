@@ -44,6 +44,17 @@ header { min-height: 66px; padding: 8px 20px; display: flex; align-items: center
 .settings-feedback > div { display: flex; gap: 12px; }
 .settings-feedback a { color: var(--accent); font-size: 12px; text-decoration: none; }
 .settings-feedback a:hover, .settings-feedback a:focus-visible { text-decoration: underline; }
+.release-info { display: grid; gap: 6px; padding-top: 8px; border-top: 1px solid var(--line); }
+.release-version { color: var(--muted); font-size: 10px; font-weight: 800; }
+.release-version span { color: var(--text); }
+.whats-new-toggle { display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; border: 0; padding: 0; background: transparent; color: var(--accent); font-size: 12px; font-weight: 800; cursor: pointer; text-align: left; }
+.whats-new-toggle:hover, .whats-new-toggle:focus-visible { text-decoration: underline; }
+.new-badge { border-radius: 999px; padding: 2px 6px; background: var(--safe); color: #032518; font-size: 9px; line-height: 1; }
+.whats-new-panel { display: grid; gap: 4px; padding: 7px 8px; border: 1px solid var(--line); border-radius: 7px; background: rgba(13,29,47,.9); color: var(--muted); font-size: 10px; line-height: 1.35; }
+.whats-new-panel[hidden] { display: none; }
+.whats-new-panel b { color: var(--text); font-size: 11px; }
+.whats-new-panel ul { margin: 0; padding-left: 15px; }
+.whats-new-panel li + li { margin-top: 3px; }
 .updated { margin-left: auto; color: var(--muted); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .updated.stale { color: var(--strong); }
 .time-now { flex: 0 0 auto; color: var(--text); white-space: nowrap; }
