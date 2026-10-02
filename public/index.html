@@ -4,14 +4,17 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>GoKite, Sułtani! — kite forecast</title>
-<link rel="stylesheet" href="/styles.attribution-header-v17-20260927.css?v=20260929-2" />
+<link rel="stylesheet" href="/styles.attribution-header-v17-20260927.css?v=20261002-1" />
 </head>
 <body>
 <div class="app">
   <header>
     <div class="brand-group">
       <div class="brand">GoKite, <b>Sułtani!</b></div>
-      <a class="header-attribution" href="https://open-meteo.com" target="_blank" rel="noopener">Weather by Open-Meteo · CC BY 4.0</a>
+      <div class="header-attributions">
+        <a class="header-attribution" href="https://open-meteo.com" target="_blank" rel="noopener">Weather by Open-Meteo · CC BY 4.0</a>
+        <a class="header-attribution" href="https://meteo.imgw.pl/" target="_blank" rel="noopener">Station data: IMGW-PIB · processed</a>
+      </div>
     </div>
     <div class="time-now"><b id="timeLabel">—</b></div>
     <div class="spot-summary" id="spotSummary" aria-live="polite" hidden>
@@ -31,6 +34,14 @@
       </span>
     </div>
     <span class="updated" id="updated">loading…</span>
+    <label class="station-control" title="Show station checks against ICON-D2">
+      <span>Stations</span>
+      <select id="obsModeSelect" aria-label="Station observation boxes">
+        <option value="now">Now</option>
+        <option value="always">Always</option>
+        <option value="off">Off</option>
+      </select>
+    </label>
     <div class="model-info">
       <button class="control" id="modelBtn" type="button" title="Open forecast model information" aria-label="Open forecast model information" aria-controls="modelInfoPanel" aria-expanded="false">ECMWF IFS 9 km</button>
       <section class="model-info-panel" id="modelInfoPanel" hidden aria-label="Forecast model information">
@@ -56,14 +67,6 @@
           <select id="markerStyleSelect" aria-label="Direction marker style">
             <option value="barbs">Wind barbs</option>
             <option value="arrows">Arrows</option>
-          </select>
-        </label>
-        <label class="settings-field" title="Map boxes comparing IMGW station wind with ICON-D2 at the same place and time">
-          <span>Station check (obs vs ICON-D2)</span>
-          <select id="obsModeSelect" aria-label="Station observation boxes">
-            <option value="now">Current hour only</option>
-            <option value="always">Always</option>
-            <option value="off">Hidden</option>
           </select>
         </label>
         <div class="settings-feedback" aria-label="Feedback links">
@@ -95,12 +98,13 @@
         <div class="mobile-spot-list" id="mobileSpotList" aria-label="Forecast by spot"></div>
         <div class="mobile-station-view" id="mobileStationView" hidden>
           <div class="mobile-station-list" id="mobileStationList" aria-label="Station observations compared with ICON-D2"></div>
-          <p class="mobile-station-note">Live station readings (raw, unverified) vs ICON-D2 at the same place and time. Stations are not necessarily at the spots: use them to judge the model and local conditions. Tap a station for details. Sources: <a href="https://danepubliczne.imgw.pl" target="_blank" rel="noopener">IMGW-PIB</a> and <a href="https://weathercloud.net" target="_blank" rel="noopener">Weathercloud</a>. Źródłem pochodzenia danych jest Instytut Meteorologii i Gospodarki Wodnej – Państwowy Instytut Badawczy. Dane IMGW-PIB zostały przetworzone.</p>
+          <p class="mobile-station-note">Live station readings (raw, unverified) vs ICON-D2 at the same place and time. Stations are not necessarily at the spots: use them to judge the model and local conditions. Tap a station for details. Source: <a href="https://meteo.imgw.pl/" target="_blank" rel="noopener">IMGW-PIB</a>. Source data originated from the Institute of Meteorology and Water Management – National Research Institute (IMGW-PIB) and have been processed.</p>
         </div>
       </div>
     </section>
     <div class="mobile-map-toolbar">
       <button class="mobile-map-back" id="mobileMapBack" type="button" aria-label="Show spot table">Spots</button>
+      <button class="mobile-map-back" id="mobileMapStations" type="button" aria-label="Show station check">Stations</button>
     </div>
     <aside class="mobile-time-dock" aria-label="Forecast timeline">
       <div class="mobile-time-current"><strong id="mobileTime">—</strong><span id="mobileTimeZone">local</span></div>
@@ -191,6 +195,6 @@
     <div class="days" id="days" aria-label="Forecast timeline" tabindex="0"></div>
   </footer>
 </div>
-<script src="/app.attribution-header-v17-20260927.js?v=20260929-2"></script>
+<script src="/app.attribution-header-v17-20260927.js?v=20261002-1"></script>
 </body>
 </html>
