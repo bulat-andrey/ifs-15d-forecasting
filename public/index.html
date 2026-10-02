@@ -4,14 +4,17 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>GoKite, Sułtani! — kite forecast</title>
-<link rel="stylesheet" href="/styles.attribution-header-v17-20260927.css?v=20260927-8" />
+<link rel="stylesheet" href="/styles.attribution-header-v17-20260927.css?v=20261002-3" />
 </head>
 <body>
 <div class="app">
   <header>
     <div class="brand-group">
       <div class="brand">GoKite, <b>Sułtani!</b></div>
-      <a class="header-attribution" href="https://open-meteo.com" target="_blank" rel="noopener">Weather by Open-Meteo · CC BY 4.0</a>
+      <div class="header-attributions">
+        <a class="header-attribution" href="https://open-meteo.com" target="_blank" rel="noopener">Weather by Open-Meteo · CC BY 4.0</a>
+        <a class="header-attribution" href="https://meteo.imgw.pl/" target="_blank" rel="noopener">Station data: IMGW-PIB · processed</a>
+      </div>
     </div>
     <div class="time-now"><b id="timeLabel">—</b></div>
     <div class="spot-summary" id="spotSummary" aria-live="polite" hidden>
@@ -31,6 +34,14 @@
       </span>
     </div>
     <span class="updated" id="updated">loading…</span>
+    <label class="station-control" title="Show station checks against ICON-D2">
+      <span>Stations</span>
+      <select id="obsModeSelect" aria-label="Station observation boxes">
+        <option value="now">Now</option>
+        <option value="always">Always</option>
+        <option value="off">Off</option>
+      </select>
+    </label>
     <div class="model-info">
       <button class="control" id="modelBtn" type="button" title="Open forecast model information" aria-label="Open forecast model information" aria-controls="modelInfoPanel" aria-expanded="false">ECMWF IFS 9 km</button>
       <section class="model-info-panel" id="modelInfoPanel" hidden aria-label="Forecast model information">
@@ -65,6 +76,20 @@
             <a href="https://github.com/bulat-andrey/ifs-15d-forecasting/issues/new?labels=enhancement&title=Feature%3A%20&body=What%20would%20you%20like%20GoKite%2C%20Su%C5%82tani!%20to%20do%3F%0A%0AWhy%20would%20it%20help%3F%0A" target="_blank" rel="noopener noreferrer">Request feature</a>
           </div>
         </div>
+        <div class="release-info">
+          <div class="release-version">GoKite <span id="appVersion">v1.1.0</span></div>
+          <button class="whats-new-toggle" id="whatsNewToggle" type="button" aria-controls="whatsNewPanel" aria-expanded="false">
+            What’s new <span class="new-badge" id="whatsNewBadge" hidden>New</span>
+          </button>
+          <div class="whats-new-panel" id="whatsNewPanel" hidden>
+            <b>Current release</b>
+            <ul>
+              <li>Live IMGW-PIB station observations near spots are compared with the forecast.</li>
+              <li>Mobile map labels now follow the visible map area.</li>
+              <li>Mobile map view includes quick Spots and Stations controls.</li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
   </header>
@@ -74,18 +99,27 @@
     <section class="mobile-board" id="mobileBoard" aria-label="Mobile forecast overview">
       <div class="mobile-board-head">
         <div>
-          <b>Forecast overview</b>
+          <b id="mobileBoardTitle">Forecast overview</b>
           <span id="mobileBoardDate">—</span>
           <span class="mobile-forecast-status" id="mobileForecastStatus" aria-live="polite">Forecast updates: loading…</span>
         </div>
-        <button class="mobile-map-toggle" id="mobileMapToggle" type="button" aria-label="Show map">Map</button>
+        <div class="mobile-board-actions">
+          <button class="mobile-map-toggle" id="mobileStationsToggle" type="button" aria-pressed="false" aria-label="Show station check">Stations</button>
+          <button class="mobile-map-toggle" id="mobileMapToggle" type="button" aria-label="Show map">Map</button>
+        </div>
       </div>
       <div class="mobile-overview">
         <div class="mobile-spot-list" id="mobileSpotList" aria-label="Forecast by spot"></div>
+        <div class="mobile-station-view" id="mobileStationView" hidden>
+          <div class="mobile-station-list" id="mobileStationList" aria-label="Station observations compared with ICON-D2"></div>
+          <p class="mobile-station-note">Live station readings (raw, unverified) vs ICON-D2 at the same place and time. Stations are not necessarily at the spots: use them to judge the model and local conditions. Tap a station for details. Source: <a href="https://meteo.imgw.pl/" target="_blank" rel="noopener">IMGW-PIB</a>. Source data originated from the Institute of Meteorology and Water Management – National Research Institute (IMGW-PIB) and have been processed.</p>
+        </div>
       </div>
     </section>
     <div class="mobile-map-toolbar">
       <button class="mobile-map-back" id="mobileMapBack" type="button" aria-label="Show spot table">Spots</button>
+      <button class="mobile-map-back" id="mobileMapStations" type="button" aria-label="Show station check">Stations</button>
+      <button class="mobile-map-back" id="mobileMapObs" type="button" aria-label="Hide station overlays" aria-pressed="true">Obs: On</button>
     </div>
     <aside class="mobile-time-dock" aria-label="Forecast timeline">
       <div class="mobile-time-current"><strong id="mobileTime">—</strong><span id="mobileTimeZone">local</span></div>
@@ -106,6 +140,8 @@
       <span><i style="background:#ff713f"></i><b id="leg4">32</b></span>
       <span><i style="background:#e83655"></i><b id="leg5">38</b></span>
       <span><i style="background:#a855f7"></i><b id="leg6">45+</b></span>
+      <span class="legend-kind" title="Round discs are forecasts for kite spots"><i class="legend-disc"></i><b>Spot forecast</b></span>
+      <span class="legend-kind" title="Square boxes are IMGW station readings compared with ICON-D2"><i class="legend-obs"></i><b>Station obs</b></span>
     </div>
     <div class="map-model" id="mapModel" hidden aria-live="polite"></div>
     <section class="dir-settings" id="dirSettings" hidden>
@@ -128,12 +164,12 @@
     <section class="graph-panel" id="graphPanel" hidden>
       <button class="gp-close" id="gpClose" aria-label="Close graph">✕</button>
       <div class="gp-head">
-        <div class="gp-heading"><b id="gpName">—</b><span id="gpSub">15-day forecast · daylight shaded</span></div>
+        <div class="gp-heading"><div class="gp-title-row"><b id="gpName">—</b><a class="gp-attribution" href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo · CC BY 4.0</a></div><span id="gpSub">15-day forecast · daylight shaded</span></div>
         <span class="view-toggle" aria-label="Spot detail view">
           <button id="tableView" type="button" class="active">Table</button>
           <button id="graphView" type="button">Graph</button>
         </span>
-        <span class="gp-legend">
+        <span class="gp-legend" id="gpLegend">
           <span><i style="background:var(--wind)"></i>wind</span>
           <span><i style="background:var(--gust)"></i>gusts</span>
           <span><i style="background:var(--precip)"></i>precip</span>
@@ -142,7 +178,6 @@
           <a class="spot-wg" id="gpWg" target="_blank" rel="noopener noreferrer" aria-label="Open Windguru Pro forecast" title="Open Windguru Pro forecast"><img src="/windguru.jpg" alt="" /><span>Windguru ↗</span></a>
           <button class="spot-live" id="gpLiveToggle" type="button" aria-controls="gpLivePanel" aria-expanded="false" hidden>Live</button>
         </span>
-        <a class="gp-attribution" href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo · CC BY 4.0</a>
       </div>
       <div class="gp-content">
         <div class="gp-forecast" id="gpForecast">
@@ -175,6 +210,6 @@
     <div class="days" id="days" aria-label="Forecast timeline" tabindex="0"></div>
   </footer>
 </div>
-<script src="/app.attribution-header-v17-20260927.js?v=20260927-17"></script>
+<script src="/app.attribution-header-v17-20260927.js?v=20261002-3"></script>
 </body>
 </html>

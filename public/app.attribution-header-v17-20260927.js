@@ -7,6 +7,7 @@ const WIND_COLORS = ['#73879c', '#25d88a', '#b7de36', '#f2bc35', '#ff713f', '#e8
 const windColor = s =>
   s < threshold ? WIND_COLORS[0] : s < threshold + 6 ? WIND_COLORS[1] : s < threshold + 13 ? WIND_COLORS[2] :
   s < threshold + 20 ? WIND_COLORS[3] : s < threshold + 26 ? WIND_COLORS[4] : s < threshold + 33 ? WIND_COLORS[5] : WIND_COLORS[6];
+const gustColor = (wind, gust) => windColor(wind) === WIND_COLORS[0] ? WIND_COLORS[0] : windColor(gust);
 const COMPASS = ['N','NE','E','SE','S','SW','W','NW'];
 const DIRECTION_EDGE_TOLERANCE_DEG = 5;
 // Open-Meteo gives the meteorological direction wind comes FROM.
@@ -77,6 +78,8 @@ const modelLabel = id => {
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 
 const el = id => document.getElementById(id);
+const APP_VERSION = '1.1.0';
+const APP_VERSION_KEY = 'gokite.seenVersion';
 const THRESHOLD_KEY = 'sultansradar.thresholdKt';
 const MARKER_STYLE_KEY = 'sultansradar.markerStyle';
 const DIR_OVERRIDES_KEY = 'sultansradar.directionSectors';
@@ -96,6 +99,9 @@ let dirOverrides = {};
 let dirRoseInvert = true;
 let dirDrag = null;
 let mobileMapOpen = false;
+let mobileStationsOpen = false;   // mobile "Stations" view (obs vs ICON-D2)
+let mobileStationPrevIdx = null;  // hour to restore when leaving the Stations view
+let mobileStationOpenId = null;   // station card expanded to show details
 let map, markerObjs = [];
 let timelineIdxs = [];
 
@@ -194,8 +200,11 @@ async function boot() {
     el('modelBtn').title = 'Seamless blend — best model per lead time: ' + S.blend.join(' → ');
   }
   setupUserSettings();
+  setupWhatsNew();
   setupThresholdControl();
   setupMarkerStyleControl();
+  obsMode = loadObsMode();
+  setupObsModeControl();
   const modelInfoPanel = el('modelInfoPanel');
   const closeModelInfo = () => { modelInfoPanel.hidden = true; el('modelBtn').setAttribute('aria-expanded', 'false'); };
   el('modelBtn').onclick = () => {
@@ -227,6 +236,9 @@ async function boot() {
   el('nextSlot').onclick = () => stepTimeline(1);
   el('mobileMapToggle').onclick = toggleMobileMap;
   el('mobileMapBack').onclick = toggleMobileMap;
+  el('mobileMapStations').onclick = openMobileStationsFromMap;
+  el('mobileMapObs').onclick = toggleMobileMapObservations;
+  el('mobileStationsToggle').onclick = () => toggleMobileStations();
   el('gpClose').onclick = clearSelection;
   setupGraphPanelDrag();
   el('tableView').onclick = () => setDetailView('table');
@@ -259,6 +271,10 @@ async function boot() {
   // Re-run label de-collision whenever the view changes (zoom changes disc spacing;
   // pan/resize change which labels would run off the edge).
   map0?.on('zoomend moveend resize', () => { if (S) drawMarkers(curIdx); });
+  // Station readings load after the forecast so they never delay the first paint.
+  // They feed the map boxes and the mobile Stations view (which works without Leaflet).
+  loadObservations();
+  setInterval(loadObservations, OBS_REFRESH_MS);
 }
 
 function loadThreshold(fallback) {
@@ -333,6 +349,26 @@ function setupUserSettings() {
   });
 }
 
+function setupWhatsNew() {
+  const version = el('appVersion');
+  const toggle = el('whatsNewToggle');
+  const panel = el('whatsNewPanel');
+  const badge = el('whatsNewBadge');
+  if (!version || !toggle || !panel || !badge) return;
+  version.textContent = `v${APP_VERSION}`;
+  badge.hidden = localStorage.getItem(APP_VERSION_KEY) === APP_VERSION;
+  toggle.onclick = e => {
+    e.stopPropagation();
+    const open = panel.hidden;
+    panel.hidden = !open;
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) {
+      localStorage.setItem(APP_VERSION_KEY, APP_VERSION);
+      badge.hidden = true;
+    }
+  };
+}
+
 function setupThresholdControl() {
   const select = el('thresholdSelect');
   if (![...select.options].some(o => Number(o.value) === threshold)) {
@@ -367,9 +403,11 @@ function updateLegend() {
 }
 
 function initMap() {
-  map = L.map('map', { zoomControl: true }).setView([54.62, 18.55], 9);
+  map = L.map('map', { zoomControl: true, attributionControl: false }).setView([54.62, 18.55], 9);
+  L.control.attribution({ prefix: false }).addTo(map);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    subdomains: 'abc', maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
+    subdomains: 'abc', maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
   }).addTo(map);
   return map;
 }
@@ -443,9 +481,9 @@ const DIRS = {
 
 // Label placement: spots with an explicit `place` hint are pinned to that side; the
 // rest are placed greedily (left→right) to avoid discs and already-placed labels.
-function computeLabelPlacements(entries) {
+function computeLabelPlacements(entries, extraDiscs = []) {
   const size = map.getSize(), cw = size.x, ch = size.y;
-  const discs = entries.map(e => ({ x: e.cx, y: e.cy, r: DISC_R }));
+  const discs = entries.map(e => ({ x: e.cx, y: e.cy, r: DISC_R })).concat(extraDiscs);
   const placed = [], out = {};
   const clampRect = (e, off) => ({
     x: Math.max(EDGE, Math.min(cw - e.w - EDGE, e.cx + off.dx)),
@@ -483,13 +521,17 @@ function computeLabelPlacements(entries) {
 
 function drawMarkers(i) {
   if (!map || !markerObjs.length) return;
+  const view = map.getBounds();
   const entries = markerObjs.map(({ s }, idx) => {
     const speed = r(windAt(s, i), 1), gust = r(s.hourly.wind_gusts_10m[i]);
     const windLabel = `${speed} (${gust}) kt`;
     const pt = map.latLngToContainerPoint([s.lat, s.lon]);
-    return { i: idx, s, speed, windLabel, w: labelWidth(s.name, windLabel), cx: pt.x, cy: pt.y, prefersLeft: s.dx < 0, place: s.place, nudge: s.nudge };
+    return { i: idx, s, speed, windLabel, w: labelWidth(s.name, windLabel), cx: pt.x, cy: pt.y, visible: view.contains([s.lat, s.lon]), prefersLeft: s.dx < 0, place: s.place, nudge: s.nudge };
   });
-  const place = computeLabelPlacements(entries);
+  const visibleEntries = entries.filter(e => e.visible);
+  const stationPts = stationsVisible(i) ? stationPoints() : [];
+  const place = computeLabelPlacements(visibleEntries, stationPts.map(p => ({ x: p.cx, y: p.cy, r: OBS_DOT_R + 2 })));
+  drawStations(stationPts, visibleEntries, place);
   entries.forEach(e => {
     const { s } = e;
     const deg = s.hourly.wind_direction_10m[i];
@@ -498,12 +540,284 @@ function drawMarkers(i) {
     const discColor = suitable ? windColor(e.speed) : WIND_COLORS[0];
     const active = s.name === selName ? ' active' : '';
     const pos = place[e.i];
+    const label = e.visible && pos
+      ? `<div class="plabel" style="left:${pos.dx}px;top:${pos.dy}px;width:${e.w}px"><span>${s.name}</span><b style="margin-left:auto;color:${windColor(e.speed)}">${e.windLabel}</b></div>`
+      : '';
     const html = `<div class="pin${active}">`
       + `<div class="disc${dirClass}" style="background:${discColor}" title="${suitable ? 'Suitable direction' : 'Unsuitable direction'}"><span>${directionMarker(deg, e.speed)}</span></div>`
-      + `<div class="plabel" style="left:${pos.dx}px;top:${pos.dy}px;width:${e.w}px"><span>${s.name}</span>`
-      + `<b style="margin-left:auto;color:${windColor(e.speed)}">${e.windLabel}</b></div></div>`;
+      + label + `</div>`;
     markerObjs[e.i].m.setIcon(L.divIcon({ className: '', html, iconSize: [0, 0], iconAnchor: [0, 0] }));
   });
+}
+
+// ---- live station boxes: IMGW observation vs ICON-D2 at the same point and time ----
+// Spots are round discs (forecast); stations are a small square dot at the exact site
+// plus a rectangular box with "observed now" and the model value for that moment.
+// The server pairs each reading with the model's nearest 15-minute step at the station.
+const OBS_MODE_KEY = 'sultansradar.obsMode';
+const OBS_REFRESH_MS = 5 * 60_000;
+const OBS_STALE_MIN = 40;
+const OBS_BOX_W = 116, OBS_BOX_H = 52, OBS_DOT_R = 5;
+let OBS = null;
+let obsMode = 'now';
+let mobileObsRestoreMode = 'now';
+let stationObjs = [];
+let obsLayer = null;
+
+function loadObsMode() {
+  const v = localStorage.getItem(OBS_MODE_KEY);
+  return v === 'always' || v === 'off' ? v : 'now';
+}
+
+function setupObsModeControl() {
+  const select = el('obsModeSelect');
+  if (!select) return;
+  select.value = obsMode;
+  syncMobileMapObsButton();
+  select.onchange = () => {
+    obsMode = ['now', 'always', 'off'].includes(select.value) ? select.value : 'now';
+    if (obsMode !== 'off') mobileObsRestoreMode = obsMode;
+    localStorage.setItem(OBS_MODE_KEY, obsMode);
+    syncMobileMapObsButton();
+    drawMarkers(curIdx);
+  };
+}
+
+function syncMobileMapObsButton() {
+  const button = el('mobileMapObs');
+  if (!button) return;
+  const on = obsMode !== 'off';
+  button.textContent = on ? 'Obs: On' : 'Obs: Off';
+  button.setAttribute('aria-pressed', on ? 'true' : 'false');
+  button.setAttribute('aria-label', on ? 'Hide station overlays' : 'Show station overlays');
+}
+
+function toggleMobileMapObservations() {
+  if (obsMode === 'off') {
+    obsMode = mobileObsRestoreMode === 'off' ? 'now' : mobileObsRestoreMode;
+  } else {
+    mobileObsRestoreMode = obsMode;
+    obsMode = 'off';
+  }
+  localStorage.setItem(OBS_MODE_KEY, obsMode);
+  const select = el('obsModeSelect');
+  if (select) select.value = obsMode;
+  syncMobileMapObsButton();
+  drawMarkers(curIdx);
+}
+
+// 'now' = only while the timeline shows the current hour, since the boxes describe the present.
+function stationsVisible(i) {
+  if (!map || !obsLayer || !stationObjs.length || obsMode === 'off') return false;
+  return obsMode === 'always' || i === nowIndex();
+}
+
+async function loadObservations() {
+  try {
+    const res = await fetch('/api/observations', { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    OBS = await res.json();
+  } catch (e) {
+    console.warn('Station observations unavailable:', e.message);
+    return;
+  }
+  syncStationMarkers();
+  if (S && times.length) {
+    if (mobileStationsOpen && curIdx !== nowIndex()) update(nowIndex()); // the hour ticked over
+    else {
+      drawMarkers(curIdx);
+      if (mobileStationsOpen) renderMobileStations();
+    }
+  }
+}
+
+function syncStationMarkers() {
+  if (!map || typeof L === 'undefined' || !OBS) return;
+  if (!obsLayer) obsLayer = L.layerGroup();
+  const byId = new Map(stationObjs.map(o => [o.st.id, o]));
+  const next = [];
+  (OBS.stations || []).forEach(st => {
+    let o = byId.get(st.id);
+    if (o) {
+      o.st = st;
+      o.m.setLatLng([st.lat, st.lon]);
+      byId.delete(st.id);
+    } else {
+      const m = L.marker([st.lat, st.lon], {
+        icon: L.divIcon({ className: '', html: '', iconSize: [0, 0], iconAnchor: [0, 0] }),
+        zIndexOffset: -500,
+        title: `${st.name}: observed wind vs ${OBS.model_label || 'model'}`
+      });
+      o = { st, m };
+      m.bindPopup(() => stationPopupHtml(o.st), { className: 'obs-popup', maxWidth: 270 });
+      obsLayer.addLayer(m);
+    }
+    next.push(o);
+  });
+  byId.forEach(o => obsLayer.removeLayer(o.m));
+  stationObjs = next;
+}
+
+function stationPoints() {
+  return stationObjs.map(o => {
+    const p = map.latLngToContainerPoint([o.st.lat, o.st.lon]);
+    return { o, cx: p.x, cy: p.y };
+  });
+}
+
+// Box placement: close to the station dot, avoiding spot discs, spot labels and other boxes.
+function placeObsBox(p, discs, occupied, size) {
+  const W = OBS_BOX_W, H = OBS_BOX_H;
+  const clamp = off => ({
+    x: Math.max(EDGE, Math.min(size.x - W - EDGE, p.cx + off.dx)),
+    y: Math.max(EDGE, Math.min(size.y - H - EDGE, p.cy + off.dy)),
+    w: W, h: H
+  });
+  let best = null, bestCost = Infinity;
+  for (const d of [7, 34, 64]) {
+    const cands = [
+      { dx: d, dy: -d - H }, { dx: d, dy: d }, { dx: -d - W, dy: -d - H }, { dx: -d - W, dy: d },
+      { dx: d, dy: -H / 2 }, { dx: -d - W, dy: -H / 2 }, { dx: -W / 2, dy: -d - H }, { dx: -W / 2, dy: d }
+    ];
+    for (const c of cands) {
+      const rect = clamp(c);
+      let cost = d * 3; // prefer staying next to the dot
+      for (const disc of discs) cost += discPenalty(disc, rect) * 2;
+      for (const q of occupied) cost += rectOverlap(rect, q) * 4;
+      if (cost < bestCost) { bestCost = cost; best = rect; }
+    }
+    if (bestCost <= d * 3) break; // found a clear spot at this distance
+  }
+  return best;
+}
+
+// Map overlays (legend, zoom, transport, model badge, attribution) in map container pixels,
+// so station boxes don't hide underneath them.
+function mapOverlayRects() {
+  const box = map.getContainer().getBoundingClientRect();
+  const sel = '.map-legend, .map-transport, .map-model, .leaflet-control-zoom, .leaflet-control-attribution';
+  return [...document.querySelectorAll(sel)].map(n => n.getBoundingClientRect())
+    .filter(b => b.width > 0 && b.height > 0)
+    .map(b => ({ x: b.left - box.left, y: b.top - box.top, w: b.width, h: b.height }));
+}
+
+function drawStations(pts, spotEntries, spotPlace) {
+  if (!map || !obsLayer) return;
+  const on = pts.length > 0;
+  if (on && !map.hasLayer(obsLayer)) obsLayer.addTo(map);
+  if (!on && map.hasLayer(obsLayer)) map.removeLayer(obsLayer);
+  if (!on) return;
+  const size = map.getSize();
+  const occupied = spotEntries.map(e => ({ x: e.cx + spotPlace[e.i].dx, y: e.cy + spotPlace[e.i].dy, w: e.w, h: LABEL_H }))
+    .concat(mapOverlayRects());
+  const discs = spotEntries.map(e => ({ x: e.cx, y: e.cy, r: DISC_R }))
+    .concat(pts.map(p => ({ x: p.cx, y: p.cy, r: OBS_DOT_R + 2 })));
+  [...pts].sort((a, b) => a.cx - b.cx).forEach(p => {
+    const rect = placeObsBox(p, discs, occupied, size);
+    occupied.push(rect);
+    const html = stationHtml(p.o.st, Math.round(rect.x - p.cx), Math.round(rect.y - p.cy));
+    p.o.m.setIcon(L.divIcon({ className: '', html, iconSize: [0, 0], iconAnchor: [0, 0] }));
+  });
+}
+
+const obsClock = iso => new Date(iso).toLocaleTimeString('en-GB', { timeZone: S?.timezone || 'Europe/Warsaw', hour12: false, hour: '2-digit', minute: '2-digit' });
+const obsDateKey = iso => new Intl.DateTimeFormat('en-CA', { timeZone: S?.timezone || 'Europe/Warsaw', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso));
+const obsAgeMin = st => Math.max(0, Math.round((Date.now() - Date.parse(st.time)) / 60_000));
+const angleDiff = (a, b) => { const d = Math.abs(normDeg(a) - normDeg(b)); return Math.min(d, 360 - d); };
+const signedKt = v => { const n = Math.round(v); return `${n > 0 ? '+' : n < 0 ? '−' : '±'}${Math.abs(n)}`; };
+const signedKt1 = v => { const n = Number(v); return `${n > 0 ? '+' : n < 0 ? '−' : '±'}${Math.abs(n).toFixed(1)}`; };
+// Model minus observed: negative = the model is too weak right now.
+const deltaClass = d => { const a = Math.abs(d); return a < 3 ? 'ok' : a < 6 ? 'warn' : 'bad'; };
+const ktPair = (speed, gust) => `${Math.round(speed)}${gust != null ? ` (${Math.round(gust)})` : ''}`;
+
+function todayEvidence(st) {
+  const today = obsDateKey(new Date().toISOString());
+  return (OBS?.history?.[st.id] || []).filter(e => obsDateKey(e.time) === today).sort((a, b) => Date.parse(a.time) - Date.parse(b.time));
+}
+
+function evidenceSummary(st, entries) {
+  const compared = entries.filter(e => e.model && Number.isFinite(e.model.speed_kt));
+  if (!compared.length) return { level: 'low', text: 'No matched forecast reading today.' };
+  const speedError = compared.reduce((sum, e) => sum + Math.abs(e.model.speed_kt - e.speed_kt), 0) / compared.length;
+  const directional = compared.filter(e => e.model.dir != null && e.dir != null);
+  const directionError = directional.reduce((sum, e) => sum + angleDiff(e.model.dir, e.dir), 0) / Math.max(1, directional.length);
+  const authoritative = st.source === 'IMGW-PIB';
+  const high = authoritative && compared.length >= 3 && speedError <= 2.5 && directionError <= 25;
+  const medium = (authoritative || compared.length >= 2) && speedError <= 4.5 && directionError <= 45;
+  if (high) return { level: 'high', text: 'Several recent IMGW readings agree closely with the forecast.' };
+  if (medium) return { level: 'medium', text: 'Recent evidence is reasonably close; the current forecast is plausible.' };
+  return { level: 'low', text: 'Evidence is limited or the model differs materially; use caution.' };
+}
+
+function recentEvidenceHtml(st, modelName) {
+  const entries = todayEvidence(st);
+  const summary = evidenceSummary(st, entries);
+  const rows = entries.slice(-5).reverse().map(e => {
+    const model = e.model;
+    const comparison = model && Number.isFinite(model.speed_kt)
+      ? ` · ${escapeHtml(modelName)} ${Number(model.speed_kt).toFixed(1)} kt · ${signedKt1(model.speed_kt - e.speed_kt)}`
+      : '';
+    return `<div class="obs-evidence-row"><time>${obsClock(e.time)}</time><span>obs ${Number(e.speed_kt).toFixed(1)} kt${comparison}</span></div>`;
+  }).join('');
+  return `<section class="obs-evidence">`
+    + `<div class="obs-evidence-head"><b>Recent evidence · today</b><strong class="obs-confidence ${summary.level}">${summary.level[0].toUpperCase() + summary.level.slice(1)}</strong></div>`
+    + (rows || '<p>No station reading has been matched with a forecast today.</p>')
+    + `<p>${summary.text}</p>`
+    + `</section>`;
+}
+
+function stationHtml(st, dx, dy) {
+  const m = st.model, modelName = OBS?.model_label || 'Model';
+  const shortModel = modelName.replace(/^ICON-/, '');
+  const sourceName = st.source || 'Station';
+  const age = obsAgeMin(st);
+  const stale = age > OBS_STALE_MIN;
+  const delta = m ? m.speed_kt - st.speed_kt : null;
+  const dirOff = m && m.dir != null ? angleDiff(m.dir, st.dir) : null;
+  // Leader line from the station dot to the nearest point of the box, when it had to move away.
+  const nx = Math.max(dx, Math.min(0, dx + OBS_BOX_W)), ny = Math.max(dy, Math.min(0, dy + OBS_BOX_H));
+  const leader = Math.hypot(nx, ny) > OBS_DOT_R + 8
+    ? `<svg class="obs-leader" width="1" height="1" aria-hidden="true"><line x1="0" y1="0" x2="${nx}" y2="${ny}"/></svg>` : '';
+  const aria = `${st.name}: observed ${Math.round(st.speed_kt)} knots from ${st.dir}°`
+    + (m ? `, ${modelName} ${Math.round(m.speed_kt)} knots from ${m.dir}°` : `, no ${modelName} value`);
+  return `<div class="obs-pin${stale ? ' stale' : ''}">`
+    + leader
+    + `<div class="obs-dot" aria-hidden="true"></div>`
+    + `<div class="obs-box" style="left:${dx}px;top:${dy}px;width:${OBS_BOX_W}px;height:${OBS_BOX_H}px" role="img" aria-label="${escapeHtml(aria)}">`
+    + `<div class="obs-head"><span>${escapeHtml(st.name)}</span><time>${stale ? `${age} min ago` : obsClock(st.time)}</time></div>`
+    + `<div class="obs-row"><i>Obs</i><span class="obs-source" title="${escapeHtml(sourceName)}">${escapeHtml(sourceName)}</span><span class="obs-dir">${windArrow(st.dir)}</span><b style="color:${windColor(st.speed_kt)}">${ktPair(st.speed_kt, st.max_kt)}</b></div>`
+    + (m
+      ? `<div class="obs-row model"><i>${escapeHtml(shortModel)}</i><span class="obs-dir">${windArrow(m.dir)}</span><b style="color:${windColor(m.speed_kt)}">${ktPair(m.speed_kt, m.gust_kt)}</b>`
+        + `<em class="obs-delta ${deltaClass(delta)}" title="${escapeHtml(modelName)} minus observed${dirOff != null ? `; direction off by ${dirOff}°` : ''}">${signedKt(delta)}${dirOff != null && dirOff >= 30 ? ` <small>${dirOff}°</small>` : ''}</em></div>`
+      : `<div class="obs-row model"><i>${escapeHtml(shortModel)}</i><span class="obs-none">no data</span></div>`)
+    + `</div></div>`;
+}
+
+function stationPopupHtml(st) {
+  const m = st.model, modelName = OBS?.model_label || 'Model';
+  const age = obsAgeMin(st);
+  const obsLine = `${r(st.speed_kt, 1)} kt${st.max_kt != null ? ` (max ${r(st.max_kt, 1)})` : ''} from ${compassFrom(st.dir)} ${st.dir}°`;
+  const modelLine = m ? `${r(m.speed_kt, 1)} kt${m.gust_kt != null ? ` (gust ${r(m.gust_kt, 1)})` : ''} from ${m.dir != null ? `${compassFrom(m.dir)} ${m.dir}°` : '–'}` : 'no data';
+  const diff = m
+    ? `${signedKt(m.speed_kt - st.speed_kt)} kt${m.dir != null ? `, direction off by ${angleDiff(m.dir, st.dir)}°` : ''}`
+    : '–';
+  const source = st.source_url
+    ? `<a href="${escapeHtml(st.source_url)}" target="_blank" rel="noopener">${escapeHtml(st.source || 'Station source')}</a>`
+    : escapeHtml(st.source || OBS?.source || 'Station');
+  const sourceNotice = st.source === 'IMGW-PIB'
+    ? 'Source data originated from the Institute of Meteorology and Water Management – National Research Institute (IMGW-PIB) and have been processed.'
+    : '';
+  return `<div class="obs-popup-body">`
+    + `<b>${escapeHtml(st.name)}</b>`
+    + `<span class="obs-popup-sub">${source} · ${st.near_spot_km} km from ${escapeHtml(st.near_spot)}</span>`
+    + `<dl>`
+    + `<dt>Observed ${obsClock(st.time)}</dt><dd>${obsLine}</dd>`
+    + `<dt>${escapeHtml(modelName)} ${m ? obsClock(m.time) : ''}</dt><dd>${modelLine}</dd>`
+    + `<dt>${escapeHtml(modelName)} − observed</dt><dd>${diff}</dd>`
+    + `</dl>`
+    + recentEvidenceHtml(st, modelName)
+    + `<small>Raw, unverified station data, reading ${age} min old. This station is not necessarily at the spot, so use it to judge local conditions and the model, not as the spot's exact wind.${sourceNotice ? ` ${sourceNotice}` : ''}</small>`
+    + `</div>`;
 }
 
 // ---- daylight helpers (per-spot daily sunrise/sunset; use spot 0 as reference) ----
@@ -691,8 +1005,30 @@ function fillSelected(name, i) {
   el('spotSummary').hidden = false;
 }
 
+function mobileTimeSlotHtml(i) {
+  const strongest = maxUsableWindAt(i);
+  const greenSpots = S.spots.filter(s => {
+    const speed = windAt(s, i), deg = s.hourly.wind_direction_10m[i];
+    return speed >= threshold && isDaylight(i) && directionOk(s, deg);
+  });
+  const good = greenSpots.length > 0;
+  const active = i === curIdx ? ' active' : '';
+  const height = Math.max(12, Math.min(100, strongest / 30 * 100));
+  const fallbackSpot = S.spots.find(s => s.name === 'Gdańsk Brzeźno');
+  const tempSpots = greenSpots.length ? greenSpots : (fallbackSpot ? [fallbackSpot] : []);
+  const tempValues = tempSpots.map(s => s.hourly.temperature_2m[i]).filter(v => v != null);
+  const temp = tempValues.length ? tempValues.reduce((sum, value) => sum + value, 0) / tempValues.length : null;
+  const precip = S.spots[0].hourly.precipitation[i];
+  const precipText = precip > 0 ? r(precip, 1) : '';
+  return `<button class="mobile-time-slot${good ? ' good' : ''}${active}" style="--wind-height:${height.toFixed(1)}%" type="button" data-time-idx="${i}" aria-label="${formatHour(i)}, ${r(strongest, 1)} knots, ${temp != null ? r(temp) + ' degrees' : 'temperature unavailable'}, ${precip > 0 ? r(precip, 1) + ' millimetres precipitation' : 'no precipitation'}${good ? ', kiteable period' : ''}">`
+    + `<span class="mobile-time-temp">${temp != null ? r(temp) + '°' : '—'}</span>`
+    + `<span class="mobile-wind-column"></span><span class="mobile-time-precip">${precipText}</span><small>${times[i].slice(11, 13)}</small></button>`;
+}
+
 function renderMobileOverview() {
   if (!S || !times.length) return;
+  if (mobileStationsOpen) { renderMobileStations(); return; }
+  el('mobileBoardTitle').textContent = 'Forecast overview';
   const date = times[curIdx].slice(0, 10);
   const dateText = new Date(`${date}T12:00:00Z`).toLocaleDateString('en-GB', {
     weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC'
@@ -705,25 +1041,7 @@ function renderMobileOverview() {
     if (!dayIndexes.length) return '';
     const dayModels = [...new Set(dayIndexes.map(i => S.spots[0].hourly.model && S.spots[0].hourly.model[i]).filter(Boolean))];
     const modelText = dayModels.length ? ` [${dayModels.map(modelShort).join('/')}]` : '';
-    const slots = dayIndexes.map(i => {
-      const strongest = maxUsableWindAt(i);
-      const greenSpots = S.spots.filter(s => {
-        const speed = windAt(s, i), deg = s.hourly.wind_direction_10m[i];
-        return speed >= threshold && isDaylight(i) && directionOk(s, deg);
-      });
-      const good = greenSpots.length > 0;
-      const active = i === curIdx ? ' active' : '';
-      const height = Math.max(12, Math.min(100, strongest / 30 * 100));
-      const fallbackSpot = S.spots.find(s => s.name === 'Gdańsk Brzeźno');
-      const tempSpots = greenSpots.length ? greenSpots : (fallbackSpot ? [fallbackSpot] : []);
-      const tempValues = tempSpots.map(s => s.hourly.temperature_2m[i]).filter(v => v != null);
-      const temp = tempValues.length ? tempValues.reduce((sum, value) => sum + value, 0) / tempValues.length : null;
-      const precip = S.spots[0].hourly.precipitation[i];
-      const precipText = precip > 0 ? r(precip, 1) : '';
-      return `<button class="mobile-time-slot${good ? ' good' : ''}${active}" style="--wind-height:${height.toFixed(1)}%" type="button" data-time-idx="${i}" aria-label="${formatHour(i)}, ${r(strongest, 1)} knots, ${temp != null ? r(temp) + ' degrees' : 'temperature unavailable'}, ${precip > 0 ? r(precip, 1) + ' millimetres precipitation' : 'no precipitation'}${good ? ', kiteable period' : ''}">`
-        + `<span class="mobile-time-temp">${temp != null ? r(temp) + '°' : '—'}</span>`
-        + `<span class="mobile-wind-column"></span><span class="mobile-time-precip">${precipText}</span><small>${times[i].slice(11, 13)}</small></button>`;
-    }).join('');
+    const slots = dayIndexes.map(mobileTimeSlotHtml).join('');
     const weekend = [0, 6].includes(new Date(`${day}T12:00:00Z`).getUTCDay());
     return `<div class="mobile-time-day${weekend ? ' weekend' : ''}"><b title="Forecast model${modelText}">${dayName(day)}${modelText}</b><div class="mobile-time-slots">${slots}</div></div>`;
   }).join('');
@@ -751,12 +1069,92 @@ function renderMobileOverview() {
   });
 }
 
+// ---- mobile "Stations" view: observed wind vs ICON-D2, like the spot list ----
+// Readings exist only for the present, so this view pins the timeline to the current hour.
+
+function toggleMobileStations(force, restoreHour = true) {
+  const open = typeof force === 'boolean' ? force : !mobileStationsOpen;
+  if (open === mobileStationsOpen) return;
+  mobileStationsOpen = open;
+  document.querySelector('.map-shell').classList.toggle('mobile-stations-open', open);
+  el('mobileSpotList').hidden = open;
+  el('mobileStationView').hidden = !open;
+  const btn = el('mobileStationsToggle');
+  btn.textContent = open ? 'Spots' : 'Stations';
+  btn.setAttribute('aria-pressed', String(open));
+  btn.setAttribute('aria-label', open ? 'Show forecast by spot' : 'Show station check');
+  if (open) {
+    mobileStationPrevIdx = curIdx;
+    if (!OBS) loadObservations();
+    update(nowIndex());
+  } else {
+    const back = restoreHour && mobileStationPrevIdx != null ? mobileStationPrevIdx : curIdx;
+    mobileStationPrevIdx = null;
+    update(back);
+  }
+}
+
+function renderMobileStations() {
+  const modelName = OBS?.model_label || 'ICON-D2';
+  const shortModel = modelName.replace(/^ICON-/, '');
+  const list = OBS?.stations || [];
+  const latest = list.length ? list.reduce((a, b) => (Date.parse(b.time) > Date.parse(a.time) ? b : a)).time : null;
+  const nowI = nowIndex();
+  el('mobileBoardTitle').textContent = 'Station check';
+  el('mobileBoardDate').textContent = latest
+    ? `Observed ${obsClock(latest)} vs ${modelName} at the same time`
+    : (OBS ? 'No station readings right now' : 'Loading station readings…');
+  el('mobileTime').textContent = latest ? obsClock(latest) : times[nowI].slice(11, 16);
+  el('mobileTimeZone').textContent = 'now';
+
+  // Timeline: current hour only.
+  el('mobileTimeList').innerHTML = `<div class="mobile-time-day now-only"><b>Now · obs vs ${escapeHtml(shortModel)}</b>`
+    + `<div class="mobile-time-slots">${mobileTimeSlotHtml(nowI)}</div></div>`;
+
+  if (!list.length) {
+    el('mobileStationList').innerHTML = `<p class="mobile-station-empty">${OBS ? 'No IMGW station near the spots is reporting wind at the moment.' : 'Loading…'}</p>`;
+    return;
+  }
+  el('mobileStationList').innerHTML = list.map(st => {
+    const m = st.model;
+    const stale = obsAgeMin(st) > OBS_STALE_MIN;
+    const open = st.id === mobileStationOpenId;
+    const sourceName = st.source || 'Station';
+    const delta = m ? m.speed_kt - st.speed_kt : null;
+    const dirOff = m && m.dir != null ? angleDiff(m.dir, st.dir) : null;
+    const aria = `${st.name}: observed ${Math.round(st.speed_kt)} knots from ${st.dir}°`
+      + (m ? `, ${modelName} ${Math.round(m.speed_kt)} knots from ${m.dir}°, difference ${signedKt(delta)} knots` : `, no ${modelName} value`);
+    const card = `<button class="mobile-station${stale ? ' stale' : ''}${open ? ' open' : ''}" type="button" data-station="${escapeHtml(st.id)}" aria-expanded="${open}" aria-label="${escapeHtml(aria)}">`
+      + `<span class="mobile-station-head"><i class="obs-square" aria-hidden="true"></i><strong>${escapeHtml(st.name)}</strong><time>${stale ? `${obsAgeMin(st)} min ago` : obsClock(st.time)}</time></span>`
+      + `<span class="mobile-station-row"><i>Obs</i><span class="obs-source" title="${escapeHtml(sourceName)}">${escapeHtml(sourceName)}</span><span class="obs-dir">${windArrow(st.dir)}</span><b style="color:${windColor(st.speed_kt)}">${ktPair(st.speed_kt, st.max_kt)}</b><small>${st.dir}°</small></span>`
+      + (m
+        ? `<span class="mobile-station-row"><i>${escapeHtml(shortModel)}</i><span class="obs-dir">${windArrow(m.dir)}</span><b style="color:${windColor(m.speed_kt)}">${ktPair(m.speed_kt, m.gust_kt)}</b><small>${m.dir != null ? m.dir + '°' : ''}</small>`
+          + `<em class="obs-delta ${deltaClass(delta)}">${signedKt(delta)}${dirOff != null && dirOff >= 30 ? ` <small>${dirOff}°</small>` : ''}</em></span>`
+        : `<span class="mobile-station-row"><i>${escapeHtml(shortModel)}</i><span class="obs-none">no data</span></span>`)
+      + `</button>`;
+    return card + (open ? `<div class="mobile-station-detail">${stationPopupHtml(st)}</div>` : '');
+  }).join('');
+  el('mobileStationList').querySelectorAll('[data-station]').forEach(button => {
+    button.onclick = () => {
+      mobileStationOpenId = mobileStationOpenId === button.dataset.station ? null : button.dataset.station;
+      renderMobileStations();
+    };
+  });
+}
+
 function toggleMobileMap() {
+  // Leaving the station view for the map keeps the current hour, so the map shows the station boxes too.
+  if (!mobileMapOpen && mobileStationsOpen) toggleMobileStations(false, false);
   mobileMapOpen = !mobileMapOpen;
   document.querySelector('.map-shell').classList.toggle('mobile-map-open', mobileMapOpen);
   el('mobileMapToggle').textContent = mobileMapOpen ? 'Forecast' : 'Map';
   el('mobileMapToggle').setAttribute('aria-label', mobileMapOpen ? 'Show forecast overview' : 'Show map');
   if (mobileMapOpen) fitAllSpots();
+}
+
+function openMobileStationsFromMap() {
+  if (mobileMapOpen) toggleMobileMap();
+  toggleMobileStations(true);
 }
 
 function openDirectionSettings() {
@@ -1090,6 +1488,7 @@ function setupGraphRangeControl() {
 
 function renderSpotDetail(name, view = detailView) {
   detailView = view;
+  el('graphPanel').classList.toggle('table-mode', view === 'table');
   el('tableView').classList.toggle('active', view === 'table');
   el('graphView').classList.toggle('active', view === 'graph');
   el('spotTable').hidden = view !== 'table';
@@ -1145,7 +1544,7 @@ function renderSpotTable(name) {
       timeCells += `<td class="${c}" title="${title}">${t.slice(11, 13)}</td>`;
       modelCells += `<td class="${c} model-cell" title="${modelLabel(mid)}"><i style="background:${modelColor(mid)}"></i></td>`;
       windCells += `<td class="${c} wind-cell" title="${title}" style="background:${windColor(wind)}">${wind}</td>`;
-      gustCells += `<td class="${c} gust-cell" title="${title}" style="background:${windColor(gust)}">${gust}</td>`;
+       gustCells += `<td class="${c} gust-cell" title="${title}" style="background:${gustColor(wind, gust)}">${gust}</td>`;
       dirCells += `<td class="${c} ${dirOk ? 'dir-good' : 'dir-bad'}" title="${compassFrom(deg)} · ${Math.round(deg)}° · ${directionStatus(s, deg)}"><span class="dir-arrow">${directionMarker(deg, wind)}</span><span class="dir-deg">${Math.round(deg)}°</span></td>`;
       tempCells += `<td class="${c} temp-cell">${temp}</td>`;
       precipCells += `<td class="${c} precip-cell">${precip > 0 ? precip : '-'}</td>`;

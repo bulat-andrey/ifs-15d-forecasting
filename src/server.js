@@ -5,6 +5,9 @@
 // - Merges them into ONE seamless per-spot series: best model per lead time, with a
 //   linear crossfade at the seams and per-hour provenance (which model each hour used).
 // - Caches the blended payload in memory and serves it + the static front-end.
+// - Polls live IMGW-PIB station wind near the spots, pairs it with ICON-D2 at the same
+//   point and time, and serves that at /api/observations.
+// - Polls live IMGW-PIB station wind near the spots and serves it at /api/observations.
 // Friends' browsers hit THIS server, not Open-Meteo, so one shared cache covers everyone.
 
 const http = require('http');
@@ -77,17 +80,26 @@ const CF = cfg.CROSSFADE_H > 0 ? cfg.CROSSFADE_H : 1;
 const HALF = CF / 2;
 // 0 below (b-HALF), ramps linearly to 1 above (b+HALF)
 const rampUp = (x, b) => Math.min(1, Math.max(0, (x - (b - HALF)) / CF));
-// Per-model blend weight at a given grid hour (from local midnight), from the seam boundaries.
-function modelWeights(gridH) {
+// Per-model blend weight at a given rolling lead hour, from the seam boundaries.
+function modelWeights(leadH) {
   return MODELS.map((m, k) => {
     let w = 1;
-    if (k > 0) w *= rampUp(gridH, BOUNDARIES[k - 1]);          // fade in at the lower seam
-    if (k < MODELS.length - 1) w *= (1 - rampUp(gridH, BOUNDARIES[k])); // fade out at the upper seam
+    if (k > 0) w *= rampUp(leadH, BOUNDARIES[k - 1]);          // fade in at the lower seam
+    if (k < MODELS.length - 1) w *= (1 - rampUp(leadH, BOUNDARIES[k])); // fade out at the upper seam
     return w;
   });
 }
 
 const tms = iso => Date.parse(iso.slice(0, 16) + ':00Z');
+
+// Match the current instant to Open-Meteo's local wall-clock ISO timeline.
+function localWallMs(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: cfg.TIMEZONE, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'
+  }).formatToParts(date).reduce((o, p) => { if (p.type !== 'literal') o[p.type] = p.value; return o; }, {});
+  return Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day), Number(parts.hour), Number(parts.minute), Number(parts.second));
+}
 
 // Merge the latest per-model raw responses into one blended payload.
 function buildBlend() {
@@ -100,6 +112,7 @@ function buildBlend() {
     const baseSpot = (rawByModel[base.id] && rawByModel[base.id][si]) || {};
     const time = (baseSpot.hourly && baseSpot.hourly.time) || [];
     const gridStart = time.length ? tms(time[0]) : 0; // local midnight of day 0
+    const nowLeadH = (localWallMs() - gridStart) / 3.6e6;
 
     // Per-model time→index lookup for this spot (models requested separately => own grids).
     const lut = MODELS.map(m => {
@@ -115,8 +128,8 @@ function buildBlend() {
 
     for (let j = 0; j < time.length; j++) {
       const t = time[j];
-      const gridH = (tms(t) - gridStart) / 3.6e6; // hours from local midnight → matches seam boundaries
-      const w = modelWeights(gridH);
+      const leadH = (tms(t) - gridStart) / 3.6e6 - nowLeadH;
+      const w = modelWeights(leadH);
 
       // Resolve each model's row index + effective (availability-gated) weight; track dominant.
       let dom = -1, domW = -1;
@@ -221,6 +234,231 @@ async function tick() {
   else if (cache.stale) buildBlend(); // (re)build if we have any data but never blended
 }
 
+// ---- live station observations ----
+// IMGW provides the broad, keyless Polish station feed. A small number of public
+// Weathercloud stations are also useful references for the peninsula; their public
+// station pages request the same current-value endpoint used below. We keep the
+// providers explicit so the UI never presents Weathercloud readings as IMGW data.
+const IMGW_METEO_URL = 'https://danepubliczne.imgw.pl/api/data/meteo';
+const WEATHERCloud_STATIONS = [
+  // Weathercloud device name is "Marcello"; display the physical location in GoKite.
+  { id: '9927353435', name: 'Jastarnia', lat: 54.7026186, lon: 18.6647203, elevation: -2 },
+  { id: '7891525501', name: 'Jastrzębia Góra', lat: 54.8322222, lon: 18.3030556, elevation: 0 }
+];
+const WEATHERCloud_BASE_URL = 'https://app.weathercloud.net';
+const MS_TO_KT = 1.943844;
+const OBS_MODEL = MODELS.find(m => m.id === cfg.OBS_MODEL) || { id: cfg.OBS_MODEL, shortLabel: cfg.OBS_MODEL };
+const OBS_HISTORY_FILE = path.join(__dirname, '..', '.cache', 'observation-history.json');
+let observationHistory = loadObservationHistory();
+let observations = { generated: null, source: 'IMGW-PIB', model: OBS_MODEL.id, model_label: OBS_MODEL.shortLabel, stations: [], history: {} };
+
+function loadObservationHistory() {
+  try {
+    const value = JSON.parse(fs.readFileSync(OBS_HISTORY_FILE, 'utf8'));
+    return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  } catch { return {}; }
+}
+
+function pruneObservationHistory() {
+  const cutoff = Date.now() - Math.max(1, cfg.OBS_HISTORY_DAYS) * 86_400_000;
+  for (const [id, entries] of Object.entries(observationHistory)) {
+    const kept = Array.isArray(entries) ? entries.filter(e => Date.parse(e.time) >= cutoff) : [];
+    if (kept.length) observationHistory[id] = kept.slice(-20_000);
+    else delete observationHistory[id];
+  }
+}
+
+function saveObservationHistory() {
+  pruneObservationHistory();
+  try {
+    fs.mkdirSync(path.dirname(OBS_HISTORY_FILE), { recursive: true });
+    fs.writeFileSync(OBS_HISTORY_FILE, JSON.stringify(observationHistory));
+  } catch (e) { console.error('[obs history] save failed:', e.message); }
+}
+
+function recordObservationHistory(stations) {
+  for (const st of stations) {
+    if (!st.time) continue;
+    const entry = {
+      id: st.id, name: st.name, source: st.source, source_url: st.source_url,
+      time: st.time, speed_kt: st.speed_kt, max_kt: st.max_kt, dir: st.dir,
+      near_spot: st.near_spot, near_spot_km: st.near_spot_km,
+      model: st.model ? { ...st.model } : null
+    };
+    const entries = observationHistory[st.id] || [];
+    const index = entries.findIndex(e => e.time === entry.time);
+    if (index >= 0) entries[index] = entry;
+    else entries.push(entry);
+    observationHistory[st.id] = entries;
+  }
+  saveObservationHistory();
+}
+
+function recentObservationHistory() {
+  const cutoff = Date.now() - 48 * 3_600_000;
+  return Object.fromEntries(Object.entries(observationHistory).map(([id, entries]) => [
+    id, entries.filter(e => Date.parse(e.time) >= cutoff)
+  ]).filter(([, entries]) => entries.length));
+}
+
+// Great-circle distance in km.
+function distanceKm(aLat, aLon, bLat, bLon) {
+  const rad = Math.PI / 180, dLat = (bLat - aLat) * rad, dLon = (bLon - aLon) * rad;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(aLat * rad) * Math.cos(bLat * rad) * Math.sin(dLon / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.sqrt(h));
+}
+function nearestSpot(lat, lon) {
+  let best = null;
+  for (const s of spots) {
+    const km = distanceKm(lat, lon, s.lat, s.lon);
+    if (!best || km < best.km) best = { name: s.name, km };
+  }
+  return best;
+}
+
+// IMGW timestamps look like "2026-09-29 16:10:00" and are UTC.
+const imgwTimeMs = s => (s ? Date.parse(s.replace(' ', 'T') + 'Z') : NaN);
+const num = v => (v == null || v === '' ? null : Number(v));
+// "GDAŃSK-PORT PÓŁNOCNY" -> "Gdańsk-Port Północny"
+const titleCase = s => s.toLocaleLowerCase('pl').replace(/(^|[\s\-.(])(\p{L})/gu, (m, sep, ch) => sep + ch.toLocaleUpperCase('pl'));
+
+function parseObservations(rows) {
+  const now = Date.now();
+  return rows.map(o => {
+    const lat = num(o.lat), lon = num(o.lon);
+    const speed = num(o.wiatr_srednia_predkosc), dir = num(o.wiatr_kierunek);
+    const t = imgwTimeMs(o.wiatr_srednia_predkosc_data);
+    if (lat == null || lon == null || speed == null || dir == null || !Number.isFinite(t)) return null;
+    const elevation = num(o.wysokosc_npm);
+    if (elevation != null && elevation > cfg.OBS_MAX_ELEVATION_M) return null;
+    const near = nearestSpot(lat, lon);
+    if (near.km > cfg.OBS_MAX_SPOT_KM) return null;
+    if (now - t > cfg.OBS_MAX_AGE_MIN * 60_000) return null;
+    // Direction and max wind must belong to (roughly) the same reading as the mean speed.
+    const sameReading = s => Math.abs(imgwTimeMs(s) - t) <= 10 * 60_000;
+    if (!sameReading(o.wiatr_kierunek_data)) return null;
+    const max = num(o.wiatr_predkosc_maksymalna);
+    const maxOk = max != null && sameReading(o.wiatr_predkosc_maksymalna_data);
+    return {
+      id: String(o.kod_stacji),
+      name: titleCase(String(o.nazwa_stacji || '')),
+      source: 'IMGW-PIB',
+      source_url: 'https://meteo.imgw.pl/',
+      lat, lon,
+      elevation,
+      speed_kt: speed * MS_TO_KT,
+      max_kt: maxOk ? max * MS_TO_KT : null,
+      dir: ((dir % 360) + 360) % 360,
+      time: new Date(t).toISOString(),
+      near_spot: near.name,
+      near_spot_km: Math.round(near.km * 10) / 10,
+      model: null
+    };
+  }).filter(Boolean).sort((a, b) => a.lon - b.lon);
+}
+
+async function fetchWeathercloudStation(station) {
+  const url = `${WEATHERCloud_BASE_URL}/device/values/${station.id}`;
+  const res = await fetch(url, {
+    headers: { ...UA, 'X-Requested-With': 'XMLHttpRequest', accept: 'application/json' },
+    signal: AbortSignal.timeout(20_000)
+  });
+  if (!res.ok) throw new Error(`${station.name}: HTTP ${res.status}`);
+  const data = await res.json();
+  const time = Number(data.epoch) * 1000;
+  const speed = num(data.wspdavg), dir = num(data.wdiravg);
+  if (!Number.isFinite(time) || speed == null || dir == null) return null;
+  if (Date.now() - time > cfg.OBS_MAX_AGE_MIN * 60_000) return null;
+  const near = nearestSpot(station.lat, station.lon);
+  return {
+    id: `weathercloud:${station.id}`,
+    name: station.name,
+    source: 'Weathercloud',
+    source_url: `${WEATHERCloud_BASE_URL}/d${station.id}`,
+    lat: station.lat,
+    lon: station.lon,
+    elevation: station.elevation,
+    speed_kt: speed * MS_TO_KT,
+    max_kt: num(data.wspdhi) == null ? null : num(data.wspdhi) * MS_TO_KT,
+    dir: ((dir % 360) + 360) % 360,
+    time: new Date(time).toISOString(),
+    near_spot: near.name,
+    near_spot_km: Math.round(near.km * 10) / 10,
+    model: null
+  };
+}
+
+async function fetchWeathercloudStations() {
+  const results = await Promise.all(WEATHERCloud_STATIONS.map(async station => {
+    try { return await fetchWeathercloudStation(station); }
+    catch (e) { console.error(`[obs Weathercloud] ${e.message}`); return null; }
+  }));
+  return results.filter(Boolean);
+}
+
+// ICON-D2 at the station points, native 15-minute steps, only a few hours around now.
+// `cell_selection=nearest` compares against the grid cell at the station itself.
+async function fetchStationModel(stations) {
+  const p = new URLSearchParams({
+    latitude: stations.map(s => s.lat).join(','),
+    longitude: stations.map(s => s.lon).join(','),
+    minutely_15: 'wind_speed_10m,wind_direction_10m,wind_gusts_10m',
+    models: OBS_MODEL.id,
+    wind_speed_unit: 'kn',
+    timezone: 'GMT',
+    past_minutely_15: String(Math.ceil(cfg.OBS_MAX_AGE_MIN / 15) + 1),
+    forecast_minutely_15: '4',
+    cell_selection: 'nearest'
+  });
+  const res = await fetch('https://api.open-meteo.com/v1/forecast?' + p.toString(), { headers: UA, signal: AbortSignal.timeout(20_000) });
+  if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + (await res.text()).slice(0, 160));
+  const data = await res.json();
+  const list = Array.isArray(data) ? data : [data];
+  stations.forEach((s, k) => {
+    const m = list[k] && list[k].minutely_15;
+    if (!m || !m.time) return;
+    // Nearest 15-minute step to the observation time (Open-Meteo GMT times have no "Z").
+    const obsMs = Date.parse(s.time);
+    let best = -1, bestDiff = Infinity;
+    m.time.forEach((iso, i) => {
+      const diff = Math.abs(Date.parse(iso + ':00Z') - obsMs);
+      if (diff < bestDiff && m.wind_speed_10m[i] != null) { bestDiff = diff; best = i; }
+    });
+    if (best < 0 || bestDiff > 15 * 60_000) return;
+    s.model = {
+      time: new Date(Date.parse(m.time[best] + ':00Z')).toISOString(),
+      speed_kt: m.wind_speed_10m[best],
+      gust_kt: m.wind_gusts_10m ? m.wind_gusts_10m[best] : null,
+      dir: m.wind_direction_10m ? m.wind_direction_10m[best] : null
+    };
+  });
+}
+
+async function refreshObservations() {
+  let stations;
+  try {
+    const res = await fetch(IMGW_METEO_URL, { headers: UA, signal: AbortSignal.timeout(20_000) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = await res.json();
+    if (!Array.isArray(rows)) throw new Error('unexpected payload');
+    stations = parseObservations(rows);
+  } catch (e) {
+    // Keep the last good set; the client greys out readings as they age.
+    console.error('[obs] failed:', e.message);
+    return;
+  }
+  const weathercloudStations = cfg.WEATHERCLOUD_ENABLED ? await fetchWeathercloudStations() : [];
+  stations = stations.concat(weathercloudStations).sort((a, b) => a.lon - b.lon);
+  if (stations.length) {
+    try { await fetchStationModel(stations); }
+    catch (e) { console.error(`[obs ${OBS_MODEL.id}] failed:`, e.message); } // still show observations
+  }
+  observations = { generated: new Date().toISOString(), source: cfg.WEATHERCLOUD_ENABLED ? 'IMGW-PIB + Weathercloud' : 'IMGW-PIB', model: OBS_MODEL.id, model_label: OBS_MODEL.shortLabel, stations };
+  recordObservationHistory(stations);
+  observations.history = recentObservationHistory();
+  console.log(`[obs] ${observations.generated} stations=${stations.length} IMGW=${stations.filter(s => s.source === 'IMGW-PIB').length} Weathercloud=${weathercloudStations.length} with ${OBS_MODEL.shortLabel}=${stations.filter(s => s.model).length}`);
+}
+
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8',
@@ -239,6 +477,10 @@ const server = http.createServer((req, res) => {
   if (u.pathname === '/api/forecast') {
     res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
     return res.end(JSON.stringify(cache));
+  }
+  if (u.pathname === '/api/observations') {
+    res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+    return res.end(JSON.stringify(observations));
   }
   if (u.pathname === '/api/health') {
     res.writeHead(cache.stale ? 503 : 200, { 'content-type': 'application/json' });
@@ -271,3 +513,7 @@ server.listen(cfg.PORT, cfg.HOST, () => {
   buildBlend();
 })();
 setInterval(tick, cfg.METADATA_POLL_MIN * 60_000);
+
+// Observations are independent of the forecast cache and don't gate /api/health.
+refreshObservations();
+setInterval(refreshObservations, cfg.OBS_POLL_MIN * 60_000);

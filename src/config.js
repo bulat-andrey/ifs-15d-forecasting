@@ -29,7 +29,7 @@ module.exports = {
     { id: 'icon_eu',   meta: 'dwd_icon_eu', label: 'ICON-EU 7 km',   shortLabel: 'ICON-EU', days: 6,  useUntilH: 120 },
     { id: process.env.OPENMETEO_MODEL || 'ecmwf_ifs', meta: 'ecmwf_ifs', label: 'ECMWF IFS 9 km', shortLabel: 'ECMWF', days: Number(process.env.FORECAST_DAYS || 15), useUntilH: Infinity }
   ],
-  CROSSFADE_H: Number(process.env.CROSSFADE_H || 6), // width of the linear blend window at each model seam
+  CROSSFADE_H: Number(process.env.CROSSFADE_H || 4), // width of the linear blend window at each model seam
 
   // Kiteable sustained-wind threshold, in knots.
   KITE_THRESHOLD_KT: Number(process.env.KITE_THRESHOLD_KT || 12),
@@ -41,6 +41,18 @@ module.exports = {
   METADATA_POLL_MIN: Number(process.env.METADATA_POLL_MIN || 5),   // how often to check the cheap metadata
   POST_RUN_DELAY_MIN: Number(process.env.POST_RUN_DELAY_MIN || 3), // wait this long after availability before fetching
   SAFETY_REFRESH_MIN: Number(process.env.SAFETY_REFRESH_MIN || 180), // force a refetch if metadata is unreachable this long
+
+  // Live observations from IMGW-PIB automatic stations (free, no API key). The API
+  // returns only the latest 10-minute reading per station, with UTC timestamps.
+  OBS_POLL_MIN: Number(process.env.OBS_POLL_MIN || 10),      // how often the server refreshes IMGW readings
+  OBS_MAX_AGE_MIN: Number(process.env.OBS_MAX_AGE_MIN || 180), // drop readings older than this
+  OBS_MAX_SPOT_KM: Number(process.env.OBS_MAX_SPOT_KM || 15),  // keep only stations this close to a spot
+  OBS_MAX_ELEVATION_M: Number(process.env.OBS_MAX_ELEVATION_M || 80), // skip inland hilltop sites (e.g. Rębiechowo, 146 m)
+  OBS_HISTORY_DAYS: Number(process.env.OBS_HISTORY_DAYS || 90), // retain matched readings for later calibration
+  // Each station reading is paired with ICON-D2 at the same point and time (15-min data).
+  OBS_MODEL: process.env.OBS_MODEL || 'icon_d2',
+  // Weathercloud public read access is disabled until written permission is received.
+  WEATHERCLOUD_ENABLED: process.env.WEATHERCLOUD_ENABLED === 'true',
 
   // Grid-cell preference: 'sea' biases toward the open-water cell (more representative
   // of the wind a kiter feels on the water). Use 'land' or 'nearest' to experiment.

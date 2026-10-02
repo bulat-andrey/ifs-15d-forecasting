@@ -31,7 +31,7 @@ no backend database, no build step.
 
 | Path | What |
 |---|---|
-| `src/server.js` | Zero-dependency Node HTTP server: static hosting + blended `/api/forecast` + scheduled refresh |
+| `src/server.js` | Zero-dependency Node HTTP server: static hosting + blended `/api/forecast` + scheduled refresh + `/api/observations` (IMGW-PIB station wind near the spots, paired with ICON-D2 at the same point and time) |
 | `src/spots.js` | The 14 spots (coords + label offsets) — single source of truth |
 | `src/config.js` | Port, blend models, refresh cadence, kite threshold (all env-overridable) |
 | `public/index.html` · `app.js` · `styles.css` | The front-end |
@@ -77,11 +77,11 @@ The default blend is:
 
 | Lead time | Model |
 |---|---|
-| 0-48 h | ICON-D2 2.2 km |
+| next 0-48 h | ICON-D2 2.2 km |
 | 48-120 h | ICON-EU 7 km |
 | 120 h+ | ECMWF IFS 9 km |
 
-`CROSSFADE_H` controls a linear blend around model seams so the graph does not jump sharply
+`CROSSFADE_H` controls a linear blend around rolling model seams so the graph does not jump sharply
 when control passes from one model to the next.
 
 ## Deploy on a small Linux server
