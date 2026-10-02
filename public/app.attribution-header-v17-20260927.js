@@ -233,6 +233,7 @@ async function boot() {
   el('nextSlot').onclick = () => stepTimeline(1);
   el('mobileMapToggle').onclick = toggleMobileMap;
   el('mobileMapBack').onclick = toggleMobileMap;
+  el('mobileMapStations').onclick = openMobileStationsFromMap;
   el('mobileStationsToggle').onclick = () => toggleMobileStations();
   el('gpClose').onclick = clearSelection;
   setupGraphPanelDrag();
@@ -378,9 +379,11 @@ function updateLegend() {
 }
 
 function initMap() {
-  map = L.map('map', { zoomControl: true }).setView([54.62, 18.55], 9);
+  map = L.map('map', { zoomControl: true, attributionControl: false }).setView([54.62, 18.55], 9);
+  L.control.attribution({ prefix: false }).addTo(map);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    subdomains: 'abc', maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
+    subdomains: 'abc', maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
   }).addTo(map);
   return map;
 }
@@ -494,15 +497,17 @@ function computeLabelPlacements(entries, extraDiscs = []) {
 
 function drawMarkers(i) {
   if (!map || !markerObjs.length) return;
+  const view = map.getBounds();
   const entries = markerObjs.map(({ s }, idx) => {
     const speed = r(windAt(s, i), 1), gust = r(s.hourly.wind_gusts_10m[i]);
     const windLabel = `${speed} (${gust}) kt`;
     const pt = map.latLngToContainerPoint([s.lat, s.lon]);
-    return { i: idx, s, speed, windLabel, w: labelWidth(s.name, windLabel), cx: pt.x, cy: pt.y, prefersLeft: s.dx < 0, place: s.place, nudge: s.nudge };
+    return { i: idx, s, speed, windLabel, w: labelWidth(s.name, windLabel), cx: pt.x, cy: pt.y, visible: view.contains([s.lat, s.lon]), prefersLeft: s.dx < 0, place: s.place, nudge: s.nudge };
   });
+  const visibleEntries = entries.filter(e => e.visible);
   const stationPts = stationsVisible(i) ? stationPoints() : [];
-  const place = computeLabelPlacements(entries, stationPts.map(p => ({ x: p.cx, y: p.cy, r: OBS_DOT_R + 2 })));
-  drawStations(stationPts, entries, place);
+  const place = computeLabelPlacements(visibleEntries, stationPts.map(p => ({ x: p.cx, y: p.cy, r: OBS_DOT_R + 2 })));
+  drawStations(stationPts, visibleEntries, place);
   entries.forEach(e => {
     const { s } = e;
     const deg = s.hourly.wind_direction_10m[i];
@@ -511,10 +516,12 @@ function drawMarkers(i) {
     const discColor = suitable ? windColor(e.speed) : WIND_COLORS[0];
     const active = s.name === selName ? ' active' : '';
     const pos = place[e.i];
+    const label = e.visible && pos
+      ? `<div class="plabel" style="left:${pos.dx}px;top:${pos.dy}px;width:${e.w}px"><span>${s.name}</span><b style="margin-left:auto;color:${windColor(e.speed)}">${e.windLabel}</b></div>`
+      : '';
     const html = `<div class="pin${active}">`
       + `<div class="disc${dirClass}" style="background:${discColor}" title="${suitable ? 'Suitable direction' : 'Unsuitable direction'}"><span>${directionMarker(deg, e.speed)}</span></div>`
-      + `<div class="plabel" style="left:${pos.dx}px;top:${pos.dy}px;width:${e.w}px"><span>${s.name}</span>`
-      + `<b style="margin-left:auto;color:${windColor(e.speed)}">${e.windLabel}</b></div></div>`;
+      + label + `</div>`;
     markerObjs[e.i].m.setIcon(L.divIcon({ className: '', html, iconSize: [0, 0], iconAnchor: [0, 0] }));
   });
 }
@@ -527,12 +534,10 @@ const OBS_MODE_KEY = 'sultansradar.obsMode';
 const OBS_REFRESH_MS = 5 * 60_000;
 const OBS_STALE_MIN = 40;
 const OBS_BOX_W = 116, OBS_BOX_H = 52, OBS_DOT_R = 5;
-const OBS_ATTRIBUTION = 'IMGW-PIB: <a href="https://danepubliczne.imgw.pl" target="_blank" rel="noopener">source</a>; data processed · Weathercloud: <a href="https://weathercloud.net" target="_blank" rel="noopener">source</a>';
 let OBS = null;
 let obsMode = 'now';
 let stationObjs = [];
 let obsLayer = null;
-let obsAttributionOn = false;
 
 function loadObsMode() {
   const v = localStorage.getItem(OBS_MODE_KEY);
@@ -650,11 +655,6 @@ function drawStations(pts, spotEntries, spotPlace) {
   const on = pts.length > 0;
   if (on && !map.hasLayer(obsLayer)) obsLayer.addTo(map);
   if (!on && map.hasLayer(obsLayer)) map.removeLayer(obsLayer);
-  if (map.attributionControl && on !== obsAttributionOn) {
-    if (on) map.attributionControl.addAttribution(OBS_ATTRIBUTION);
-    else map.attributionControl.removeAttribution(OBS_ATTRIBUTION);
-    obsAttributionOn = on;
-  }
   if (!on) return;
   const size = map.getSize();
   const occupied = spotEntries.map(e => ({ x: e.cx + spotPlace[e.i].dx, y: e.cy + spotPlace[e.i].dy, w: e.w, h: LABEL_H }))
@@ -670,16 +670,55 @@ function drawStations(pts, spotEntries, spotPlace) {
 }
 
 const obsClock = iso => new Date(iso).toLocaleTimeString('en-GB', { timeZone: S?.timezone || 'Europe/Warsaw', hour12: false, hour: '2-digit', minute: '2-digit' });
+const obsDateKey = iso => new Intl.DateTimeFormat('en-CA', { timeZone: S?.timezone || 'Europe/Warsaw', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso));
 const obsAgeMin = st => Math.max(0, Math.round((Date.now() - Date.parse(st.time)) / 60_000));
 const angleDiff = (a, b) => { const d = Math.abs(normDeg(a) - normDeg(b)); return Math.min(d, 360 - d); };
 const signedKt = v => { const n = Math.round(v); return `${n > 0 ? '+' : n < 0 ? '−' : '±'}${Math.abs(n)}`; };
+const signedKt1 = v => { const n = Number(v); return `${n > 0 ? '+' : n < 0 ? '−' : '±'}${Math.abs(n).toFixed(1)}`; };
 // Model minus observed: negative = the model is too weak right now.
 const deltaClass = d => { const a = Math.abs(d); return a < 3 ? 'ok' : a < 6 ? 'warn' : 'bad'; };
 const ktPair = (speed, gust) => `${Math.round(speed)}${gust != null ? ` (${Math.round(gust)})` : ''}`;
 
+function todayEvidence(st) {
+  const today = obsDateKey(new Date().toISOString());
+  return (OBS?.history?.[st.id] || []).filter(e => obsDateKey(e.time) === today).sort((a, b) => Date.parse(a.time) - Date.parse(b.time));
+}
+
+function evidenceSummary(st, entries) {
+  const compared = entries.filter(e => e.model && Number.isFinite(e.model.speed_kt));
+  if (!compared.length) return { level: 'low', text: 'No matched forecast reading today.' };
+  const speedError = compared.reduce((sum, e) => sum + Math.abs(e.model.speed_kt - e.speed_kt), 0) / compared.length;
+  const directional = compared.filter(e => e.model.dir != null && e.dir != null);
+  const directionError = directional.reduce((sum, e) => sum + angleDiff(e.model.dir, e.dir), 0) / Math.max(1, directional.length);
+  const authoritative = st.source === 'IMGW-PIB';
+  const high = authoritative && compared.length >= 3 && speedError <= 2.5 && directionError <= 25;
+  const medium = (authoritative || compared.length >= 2) && speedError <= 4.5 && directionError <= 45;
+  if (high) return { level: 'high', text: 'Several recent IMGW readings agree closely with the forecast.' };
+  if (medium) return { level: 'medium', text: 'Recent evidence is reasonably close; the current forecast is plausible.' };
+  return { level: 'low', text: 'Evidence is limited or the model differs materially; use caution.' };
+}
+
+function recentEvidenceHtml(st, modelName) {
+  const entries = todayEvidence(st);
+  const summary = evidenceSummary(st, entries);
+  const rows = entries.slice(-5).reverse().map(e => {
+    const model = e.model;
+    const comparison = model && Number.isFinite(model.speed_kt)
+      ? ` · ${escapeHtml(modelName)} ${Number(model.speed_kt).toFixed(1)} kt · ${signedKt1(model.speed_kt - e.speed_kt)}`
+      : '';
+    return `<div class="obs-evidence-row"><time>${obsClock(e.time)}</time><span>obs ${Number(e.speed_kt).toFixed(1)} kt${comparison}</span></div>`;
+  }).join('');
+  return `<section class="obs-evidence">`
+    + `<div class="obs-evidence-head"><b>Recent evidence · today</b><strong class="obs-confidence ${summary.level}">${summary.level[0].toUpperCase() + summary.level.slice(1)}</strong></div>`
+    + (rows || '<p>No station reading has been matched with a forecast today.</p>')
+    + `<p>${summary.text}</p>`
+    + `</section>`;
+}
+
 function stationHtml(st, dx, dy) {
   const m = st.model, modelName = OBS?.model_label || 'Model';
   const shortModel = modelName.replace(/^ICON-/, '');
+  const sourceName = st.source || 'Station';
   const age = obsAgeMin(st);
   const stale = age > OBS_STALE_MIN;
   const delta = m ? m.speed_kt - st.speed_kt : null;
@@ -695,7 +734,7 @@ function stationHtml(st, dx, dy) {
     + `<div class="obs-dot" aria-hidden="true"></div>`
     + `<div class="obs-box" style="left:${dx}px;top:${dy}px;width:${OBS_BOX_W}px;height:${OBS_BOX_H}px" role="img" aria-label="${escapeHtml(aria)}">`
     + `<div class="obs-head"><span>${escapeHtml(st.name)}</span><time>${stale ? `${age} min ago` : obsClock(st.time)}</time></div>`
-    + `<div class="obs-row"><i>Obs</i><span class="obs-dir">${windArrow(st.dir)}</span><b style="color:${windColor(st.speed_kt)}">${ktPair(st.speed_kt, st.max_kt)}</b></div>`
+    + `<div class="obs-row"><i>Obs</i><span class="obs-source" title="${escapeHtml(sourceName)}">${escapeHtml(sourceName)}</span><span class="obs-dir">${windArrow(st.dir)}</span><b style="color:${windColor(st.speed_kt)}">${ktPair(st.speed_kt, st.max_kt)}</b></div>`
     + (m
       ? `<div class="obs-row model"><i>${escapeHtml(shortModel)}</i><span class="obs-dir">${windArrow(m.dir)}</span><b style="color:${windColor(m.speed_kt)}">${ktPair(m.speed_kt, m.gust_kt)}</b>`
         + `<em class="obs-delta ${deltaClass(delta)}" title="${escapeHtml(modelName)} minus observed${dirOff != null ? `; direction off by ${dirOff}°` : ''}">${signedKt(delta)}${dirOff != null && dirOff >= 30 ? ` <small>${dirOff}°</small>` : ''}</em></div>`
@@ -715,7 +754,7 @@ function stationPopupHtml(st) {
     ? `<a href="${escapeHtml(st.source_url)}" target="_blank" rel="noopener">${escapeHtml(st.source || 'Station source')}</a>`
     : escapeHtml(st.source || OBS?.source || 'Station');
   const sourceNotice = st.source === 'IMGW-PIB'
-    ? 'Źródłem pochodzenia danych jest Instytut Meteorologii i Gospodarki Wodnej – Państwowy Instytut Badawczy. Dane IMGW-PIB zostały przetworzone.'
+    ? 'Source data originated from the Institute of Meteorology and Water Management – National Research Institute (IMGW-PIB) and have been processed.'
     : '';
   return `<div class="obs-popup-body">`
     + `<b>${escapeHtml(st.name)}</b>`
@@ -725,6 +764,7 @@ function stationPopupHtml(st) {
     + `<dt>${escapeHtml(modelName)} ${m ? obsClock(m.time) : ''}</dt><dd>${modelLine}</dd>`
     + `<dt>${escapeHtml(modelName)} − observed</dt><dd>${diff}</dd>`
     + `</dl>`
+    + recentEvidenceHtml(st, modelName)
     + `<small>Raw, unverified station data, reading ${age} min old. This station is not necessarily at the spot, so use it to judge local conditions and the model, not as the spot's exact wind.${sourceNotice ? ` ${sourceNotice}` : ''}</small>`
     + `</div>`;
 }
@@ -1028,13 +1068,14 @@ function renderMobileStations() {
     const m = st.model;
     const stale = obsAgeMin(st) > OBS_STALE_MIN;
     const open = st.id === mobileStationOpenId;
+    const sourceName = st.source || 'Station';
     const delta = m ? m.speed_kt - st.speed_kt : null;
     const dirOff = m && m.dir != null ? angleDiff(m.dir, st.dir) : null;
     const aria = `${st.name}: observed ${Math.round(st.speed_kt)} knots from ${st.dir}°`
       + (m ? `, ${modelName} ${Math.round(m.speed_kt)} knots from ${m.dir}°, difference ${signedKt(delta)} knots` : `, no ${modelName} value`);
     const card = `<button class="mobile-station${stale ? ' stale' : ''}${open ? ' open' : ''}" type="button" data-station="${escapeHtml(st.id)}" aria-expanded="${open}" aria-label="${escapeHtml(aria)}">`
       + `<span class="mobile-station-head"><i class="obs-square" aria-hidden="true"></i><strong>${escapeHtml(st.name)}</strong><time>${stale ? `${obsAgeMin(st)} min ago` : obsClock(st.time)}</time></span>`
-      + `<span class="mobile-station-row"><i>Obs</i><span class="obs-dir">${windArrow(st.dir)}</span><b style="color:${windColor(st.speed_kt)}">${ktPair(st.speed_kt, st.max_kt)}</b><small>${st.dir}°</small></span>`
+      + `<span class="mobile-station-row"><i>Obs</i><span class="obs-source" title="${escapeHtml(sourceName)}">${escapeHtml(sourceName)}</span><span class="obs-dir">${windArrow(st.dir)}</span><b style="color:${windColor(st.speed_kt)}">${ktPair(st.speed_kt, st.max_kt)}</b><small>${st.dir}°</small></span>`
       + (m
         ? `<span class="mobile-station-row"><i>${escapeHtml(shortModel)}</i><span class="obs-dir">${windArrow(m.dir)}</span><b style="color:${windColor(m.speed_kt)}">${ktPair(m.speed_kt, m.gust_kt)}</b><small>${m.dir != null ? m.dir + '°' : ''}</small>`
           + `<em class="obs-delta ${deltaClass(delta)}">${signedKt(delta)}${dirOff != null && dirOff >= 30 ? ` <small>${dirOff}°</small>` : ''}</em></span>`
@@ -1058,6 +1099,11 @@ function toggleMobileMap() {
   el('mobileMapToggle').textContent = mobileMapOpen ? 'Forecast' : 'Map';
   el('mobileMapToggle').setAttribute('aria-label', mobileMapOpen ? 'Show forecast overview' : 'Show map');
   if (mobileMapOpen) fitAllSpots();
+}
+
+function openMobileStationsFromMap() {
+  if (mobileMapOpen) toggleMobileMap();
+  toggleMobileStations(true);
 }
 
 function openDirectionSettings() {

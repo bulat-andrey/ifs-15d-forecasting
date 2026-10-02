@@ -248,7 +248,58 @@ const WEATHERCloud_STATIONS = [
 const WEATHERCloud_BASE_URL = 'https://app.weathercloud.net';
 const MS_TO_KT = 1.943844;
 const OBS_MODEL = MODELS.find(m => m.id === cfg.OBS_MODEL) || { id: cfg.OBS_MODEL, shortLabel: cfg.OBS_MODEL };
-let observations = { generated: null, source: 'IMGW-PIB + Weathercloud', model: OBS_MODEL.id, model_label: OBS_MODEL.shortLabel, stations: [] };
+const OBS_HISTORY_FILE = path.join(__dirname, '..', '.cache', 'observation-history.json');
+let observationHistory = loadObservationHistory();
+let observations = { generated: null, source: 'IMGW-PIB', model: OBS_MODEL.id, model_label: OBS_MODEL.shortLabel, stations: [], history: {} };
+
+function loadObservationHistory() {
+  try {
+    const value = JSON.parse(fs.readFileSync(OBS_HISTORY_FILE, 'utf8'));
+    return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  } catch { return {}; }
+}
+
+function pruneObservationHistory() {
+  const cutoff = Date.now() - Math.max(1, cfg.OBS_HISTORY_DAYS) * 86_400_000;
+  for (const [id, entries] of Object.entries(observationHistory)) {
+    const kept = Array.isArray(entries) ? entries.filter(e => Date.parse(e.time) >= cutoff) : [];
+    if (kept.length) observationHistory[id] = kept.slice(-20_000);
+    else delete observationHistory[id];
+  }
+}
+
+function saveObservationHistory() {
+  pruneObservationHistory();
+  try {
+    fs.mkdirSync(path.dirname(OBS_HISTORY_FILE), { recursive: true });
+    fs.writeFileSync(OBS_HISTORY_FILE, JSON.stringify(observationHistory));
+  } catch (e) { console.error('[obs history] save failed:', e.message); }
+}
+
+function recordObservationHistory(stations) {
+  for (const st of stations) {
+    if (!st.time) continue;
+    const entry = {
+      id: st.id, name: st.name, source: st.source, source_url: st.source_url,
+      time: st.time, speed_kt: st.speed_kt, max_kt: st.max_kt, dir: st.dir,
+      near_spot: st.near_spot, near_spot_km: st.near_spot_km,
+      model: st.model ? { ...st.model } : null
+    };
+    const entries = observationHistory[st.id] || [];
+    const index = entries.findIndex(e => e.time === entry.time);
+    if (index >= 0) entries[index] = entry;
+    else entries.push(entry);
+    observationHistory[st.id] = entries;
+  }
+  saveObservationHistory();
+}
+
+function recentObservationHistory() {
+  const cutoff = Date.now() - 48 * 3_600_000;
+  return Object.fromEntries(Object.entries(observationHistory).map(([id, entries]) => [
+    id, entries.filter(e => Date.parse(e.time) >= cutoff)
+  ]).filter(([, entries]) => entries.length));
+}
 
 // Great-circle distance in km.
 function distanceKm(aLat, aLon, bLat, bLon) {
@@ -396,13 +447,15 @@ async function refreshObservations() {
     console.error('[obs] failed:', e.message);
     return;
   }
-  const weathercloudStations = await fetchWeathercloudStations();
+  const weathercloudStations = cfg.WEATHERCLOUD_ENABLED ? await fetchWeathercloudStations() : [];
   stations = stations.concat(weathercloudStations).sort((a, b) => a.lon - b.lon);
   if (stations.length) {
     try { await fetchStationModel(stations); }
     catch (e) { console.error(`[obs ${OBS_MODEL.id}] failed:`, e.message); } // still show observations
   }
-  observations = { generated: new Date().toISOString(), source: 'IMGW-PIB + Weathercloud', model: OBS_MODEL.id, model_label: OBS_MODEL.shortLabel, stations };
+  observations = { generated: new Date().toISOString(), source: cfg.WEATHERCLOUD_ENABLED ? 'IMGW-PIB + Weathercloud' : 'IMGW-PIB', model: OBS_MODEL.id, model_label: OBS_MODEL.shortLabel, stations };
+  recordObservationHistory(stations);
+  observations.history = recentObservationHistory();
   console.log(`[obs] ${observations.generated} stations=${stations.length} IMGW=${stations.filter(s => s.source === 'IMGW-PIB').length} Weathercloud=${weathercloudStations.length} with ${OBS_MODEL.shortLabel}=${stations.filter(s => s.model).length}`);
 }
 
