@@ -78,6 +78,8 @@ const modelLabel = id => {
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 
 const el = id => document.getElementById(id);
+const APP_VERSION = '1.1.0';
+const APP_VERSION_KEY = 'gokite.seenVersion';
 const THRESHOLD_KEY = 'sultansradar.thresholdKt';
 const MARKER_STYLE_KEY = 'sultansradar.markerStyle';
 const DIR_OVERRIDES_KEY = 'sultansradar.directionSectors';
@@ -198,6 +200,7 @@ async function boot() {
     el('modelBtn').title = 'Seamless blend — best model per lead time: ' + S.blend.join(' → ');
   }
   setupUserSettings();
+  setupWhatsNew();
   setupThresholdControl();
   setupMarkerStyleControl();
   obsMode = loadObsMode();
@@ -234,6 +237,7 @@ async function boot() {
   el('mobileMapToggle').onclick = toggleMobileMap;
   el('mobileMapBack').onclick = toggleMobileMap;
   el('mobileMapStations').onclick = openMobileStationsFromMap;
+  el('mobileMapObs').onclick = toggleMobileMapObservations;
   el('mobileStationsToggle').onclick = () => toggleMobileStations();
   el('gpClose').onclick = clearSelection;
   setupGraphPanelDrag();
@@ -343,6 +347,26 @@ function setupUserSettings() {
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') setOpen(false);
   });
+}
+
+function setupWhatsNew() {
+  const version = el('appVersion');
+  const toggle = el('whatsNewToggle');
+  const panel = el('whatsNewPanel');
+  const badge = el('whatsNewBadge');
+  if (!version || !toggle || !panel || !badge) return;
+  version.textContent = `v${APP_VERSION}`;
+  badge.hidden = localStorage.getItem(APP_VERSION_KEY) === APP_VERSION;
+  toggle.onclick = e => {
+    e.stopPropagation();
+    const open = panel.hidden;
+    panel.hidden = !open;
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) {
+      localStorage.setItem(APP_VERSION_KEY, APP_VERSION);
+      badge.hidden = true;
+    }
+  };
 }
 
 function setupThresholdControl() {
@@ -536,6 +560,7 @@ const OBS_STALE_MIN = 40;
 const OBS_BOX_W = 116, OBS_BOX_H = 52, OBS_DOT_R = 5;
 let OBS = null;
 let obsMode = 'now';
+let mobileObsRestoreMode = 'now';
 let stationObjs = [];
 let obsLayer = null;
 
@@ -548,11 +573,37 @@ function setupObsModeControl() {
   const select = el('obsModeSelect');
   if (!select) return;
   select.value = obsMode;
+  syncMobileMapObsButton();
   select.onchange = () => {
     obsMode = ['now', 'always', 'off'].includes(select.value) ? select.value : 'now';
+    if (obsMode !== 'off') mobileObsRestoreMode = obsMode;
     localStorage.setItem(OBS_MODE_KEY, obsMode);
+    syncMobileMapObsButton();
     drawMarkers(curIdx);
   };
+}
+
+function syncMobileMapObsButton() {
+  const button = el('mobileMapObs');
+  if (!button) return;
+  const on = obsMode !== 'off';
+  button.textContent = on ? 'Obs: On' : 'Obs: Off';
+  button.setAttribute('aria-pressed', on ? 'true' : 'false');
+  button.setAttribute('aria-label', on ? 'Hide station overlays' : 'Show station overlays');
+}
+
+function toggleMobileMapObservations() {
+  if (obsMode === 'off') {
+    obsMode = mobileObsRestoreMode === 'off' ? 'now' : mobileObsRestoreMode;
+  } else {
+    mobileObsRestoreMode = obsMode;
+    obsMode = 'off';
+  }
+  localStorage.setItem(OBS_MODE_KEY, obsMode);
+  const select = el('obsModeSelect');
+  if (select) select.value = obsMode;
+  syncMobileMapObsButton();
+  drawMarkers(curIdx);
 }
 
 // 'now' = only while the timeline shows the current hour, since the boxes describe the present.
