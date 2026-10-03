@@ -2,12 +2,22 @@
 
 Live app: [gokite.pomorskie.pl](https://gokite.pomorskie.pl)
 
-Kite-surf forecast for 16 Polish Baltic spots. Map-first: each spot is coloured by
+Kite-surf forecast for 18 Polish Baltic spots. Map-first: each spot is coloured by
 sustained wind and shows where the wind blows; the timeline highlights
 **daylight** kiteable windows (you don't kite in the dark), and selecting a spot opens a
 Windguru-style 15-day graph. Forecast data comes from a server-side cached
 **ICON-D2 → ICON-EU → ECMWF IFS** blend via [Open-Meteo](https://open-meteo.com):
 high-resolution short range, broader European mid range, and ECMWF long range.
+
+## What's new in v1.3.0
+
+- **My Spots:** choose favourite spots to focus the timeline and mobile spot list;
+  the map continues to show the full coast.
+- **Water character:** spots identify wave, flat-water, choppy, or mixed conditions
+  in the favourites list.
+- **Live sources:** spot details now include curated camera and wind links for
+  available local sources, including Ustka, Rowy, Orłowo, and Sopot.
+- **Coverage:** the app now covers 18 Baltic spots from Ustka to Krynica Morska.
 
 ## How it works
 
@@ -37,7 +47,7 @@ no backend database, no build step.
 | Path | What |
 |---|---|
 | `src/server.js` | Zero-dependency Node HTTP server: static hosting + blended `/api/forecast` + scheduled refresh + `/api/observations` (IMGW-PIB station wind near the spots, paired with ICON-D2 at the same point and time) |
-| `src/spots.js` | The 16 spots (coords + label offsets) — single source of truth |
+| `src/spots.js` | The 18 spots (coords + label offsets) — single source of truth |
 | `src/config.js` | Port, blend models, refresh cadence, kite threshold (all env-overridable) |
 | `public/index.html` · `app.js` · `styles.css` | The front-end |
 | `deploy/Caddyfile` | Reverse proxy + automatic HTTPS |
@@ -64,7 +74,7 @@ node src/server.js
 # → gokite listening on http://127.0.0.1:8787
 ```
 
-Open http://127.0.0.1:8787. First load fetches all 16 spots for each blend model;
+Open http://127.0.0.1:8787. First load fetches all 18 spots for each blend model;
 `/api/health` reports freshness and loaded model state.
 
 Config via env (see `.env.example`): `PORT`, `OPENMETEO_MODEL` (`ecmwf_ifs` = 9 km HRES,
@@ -74,8 +84,8 @@ Config via env (see `.env.example`): `PORT`, `OPENMETEO_MODEL` (`ecmwf_ifs` = 9 
 and the station distance/elevation limits.
 
 The current spot list runs west to east from Ustka and Rowy through Łeba, Lubiatowo,
-Dębki, Jastrzębia Góra, Puck, Kuźnica, Jastarnia, Jurata, Hel, Rewa, Gdańsk Brzeźno,
-Orle, Jantar, and Krynica Morska. IMGW currently provides a live Ustka station that
+Dębki, Jastrzębia Góra, Puck, Kuźnica, Jastarnia, Jurata, Hel, Rewa, Orłowo, Sopot,
+Gdańsk Brzeźno, Orle, Jantar, and Krynica Morska. IMGW currently provides a live Ustka station that
 is close to the Ustka spot; no IMGW Rowy station is currently available.
 
 Observation history is stored in `.cache/observation-history.json`, retained for 90

@@ -69,6 +69,11 @@
             <option value="arrows">Arrows</option>
           </select>
         </label>
+        <details class="settings-favorites" open>
+          <summary class="settings-favorites-head"><span id="favoriteSpotsTitle">My spots</span><button id="favoriteSpotsClear" type="button">Clear</button></summary>
+          <div class="favorite-spot-list" id="favoriteSpotList"></div>
+          <small>When selected, the timeline and mobile list focus on these spots. The map keeps all spots visible.</small>
+        </details>
         <div class="settings-feedback" aria-label="Feedback links">
           <span>Feedback</span>
           <div>
@@ -77,17 +82,17 @@
           </div>
         </div>
         <div class="release-info">
-          <div class="release-version">GoKite <span id="appVersion">v1.2.0</span></div>
+          <div class="release-version">GoKite <span id="appVersion">v1.3.0</span></div>
           <button class="whats-new-toggle" id="whatsNewToggle" type="button" aria-controls="whatsNewPanel" aria-expanded="false">
             What’s new <span class="new-badge" id="whatsNewBadge" hidden>New</span>
           </button>
           <div class="whats-new-panel" id="whatsNewPanel" hidden>
             <b>Current release</b>
             <ul>
-              <li>Ustka and Rowy extend the Polish Baltic spot coverage to 16 locations.</li>
-              <li>IMGW-PIB station observations are paired with ICON-D2 and retained for recent evidence.</li>
-              <li>Station details show recent comparisons, a compact IMGW badge, and clearer direction warnings.</li>
-              <li>Mobile map labels follow the visible map area, with quick Spots and Stations controls.</li>
+              <li>Choose My Spots to focus the timeline and mobile spot list on your favourites while keeping every spot visible on the map.</li>
+              <li>All 18 Baltic spots now show their water character, including wave, flat, choppy, and mixed options.</li>
+              <li>Spot details include curated nearby camera and wind links where available.</li>
+              <li>IMGW-PIB station observations remain paired with ICON-D2 and retained for recent evidence.</li>
             </ul>
           </div>
         </div>
@@ -211,6 +216,6 @@
     <div class="days" id="days" aria-label="Forecast timeline" tabindex="0"></div>
   </footer>
 </div>
-<script src="/app.attribution-header-v17-20260927.js?v=20261003-6"></script>
+<script src="/app.attribution-header-v17-20260927.js?v=20261004-4"></script>
 </body>
 </html>
