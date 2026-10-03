@@ -55,10 +55,14 @@ const directionRangeWidth = (a, b) => {
   const from = normDeg(a), to = normDeg(b);
   return from <= to ? to - from : to + 360 - from;
 };
+const directionCoreOk = (spot, deg) => deg != null && (!spot.goodFrom || !spot.goodFrom.length || spot.goodFrom.some(([a, b]) =>
+  directionRangeWidth(a, b) >= 359 || inRange(deg, a, b)
+));
 const directionOk = (spot, deg) => deg != null && (!spot.goodFrom || !spot.goodFrom.length || spot.goodFrom.some(([a, b]) =>
   directionRangeWidth(a, b) + DIRECTION_EDGE_TOLERANCE_DEG * 2 >= 359
     || inRange(deg, a - DIRECTION_EDGE_TOLERANCE_DEG, b + DIRECTION_EDGE_TOLERANCE_DEG)
 ));
+const directionEdge = (spot, deg) => directionOk(spot, deg) && !directionCoreOk(spot, deg);
 const directionStatus = (spot, deg) => directionOk(spot, deg) ? 'suitable direction' : 'offshore / cross-offshore';
 
 // Blend model provenance → colour/short-label for the graph band + legend.
@@ -78,7 +82,7 @@ const modelLabel = id => {
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 
 const el = id => document.getElementById(id);
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 const APP_VERSION_KEY = 'gokite.seenVersion';
 const THRESHOLD_KEY = 'sultansradar.thresholdKt';
 const MARKER_STYLE_KEY = 'sultansradar.markerStyle';
@@ -536,8 +540,9 @@ function drawMarkers(i) {
     const { s } = e;
     const deg = s.hourly.wind_direction_10m[i];
     const suitable = directionOk(s, deg);
-    const dirClass = suitable ? ' dir-good' : ' dir-bad';
-    const discColor = suitable ? windColor(e.speed) : WIND_COLORS[0];
+    const edge = directionEdge(s, deg);
+    const dirClass = edge ? ' dir-edge' : suitable ? ' dir-good' : ' dir-bad';
+    const discColor = edge ? '#f2bc35' : suitable ? windColor(e.speed) : WIND_COLORS[0];
     const active = s.name === selName ? ' active' : '';
     const pos = place[e.i];
     const label = e.visible && pos
@@ -724,11 +729,14 @@ const obsClock = iso => new Date(iso).toLocaleTimeString('en-GB', { timeZone: S?
 const obsDateKey = iso => new Intl.DateTimeFormat('en-CA', { timeZone: S?.timezone || 'Europe/Warsaw', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso));
 const obsAgeMin = st => Math.max(0, Math.round((Date.now() - Date.parse(st.time)) / 60_000));
 const angleDiff = (a, b) => { const d = Math.abs(normDeg(a) - normDeg(b)); return Math.min(d, 360 - d); };
-const signedKt = v => { const n = Math.round(v); return `${n > 0 ? '+' : n < 0 ? '−' : '±'}${Math.abs(n)}`; };
-const signedKt1 = v => { const n = Number(v); return `${n > 0 ? '+' : n < 0 ? '−' : '±'}${Math.abs(n).toFixed(1)}`; };
+const signedKt = v => { const n = Number(v); return `${n > 0 ? '+' : n < 0 ? '−' : '±'}${Math.abs(n).toFixed(1)}`; };
+const signedKt1 = signedKt;
 // Model minus observed: negative = the model is too weak right now.
 const deltaClass = d => { const a = Math.abs(d); return a < 3 ? 'ok' : a < 6 ? 'warn' : 'bad'; };
 const ktPair = (speed, gust) => `${Math.round(speed)}${gust != null ? ` (${Math.round(gust)})` : ''}`;
+const sourceBadge = source => source === 'IMGW-PIB'
+  ? '<span class="imgw-mini-logo" title="IMGW-PIB station data">IMGW</span>'
+  : `<span class="obs-source">${escapeHtml(source || 'Station')}</span>`;
 
 function todayEvidence(st) {
   const today = obsDateKey(new Date().toISOString());
@@ -752,7 +760,11 @@ function evidenceSummary(st, entries) {
 function recentEvidenceHtml(st, modelName) {
   const entries = todayEvidence(st);
   const summary = evidenceSummary(st, entries);
-  const rows = entries.slice(-5).reverse().map(e => {
+  const recent = entries.slice(-5);
+  const older = [];
+  for (let i = entries.length - 6; i >= 0 && older.length < 5; i -= 2) older.push(entries[i]);
+  const displayEntries = [...recent, ...older].sort((a, b) => Date.parse(b.time) - Date.parse(a.time));
+  const rows = displayEntries.map(e => {
     const model = e.model;
     const comparison = model && Number.isFinite(model.speed_kt)
       ? ` · ${escapeHtml(modelName)} ${Number(model.speed_kt).toFixed(1)} kt · ${signedKt1(model.speed_kt - e.speed_kt)}`
@@ -785,7 +797,7 @@ function stationHtml(st, dx, dy) {
     + `<div class="obs-dot" aria-hidden="true"></div>`
     + `<div class="obs-box" style="left:${dx}px;top:${dy}px;width:${OBS_BOX_W}px;height:${OBS_BOX_H}px" role="img" aria-label="${escapeHtml(aria)}">`
     + `<div class="obs-head"><span>${escapeHtml(st.name)}</span><time>${stale ? `${age} min ago` : obsClock(st.time)}</time></div>`
-    + `<div class="obs-row"><i>Obs</i><span class="obs-source" title="${escapeHtml(sourceName)}">${escapeHtml(sourceName)}</span><span class="obs-dir">${windArrow(st.dir)}</span><b style="color:${windColor(st.speed_kt)}">${ktPair(st.speed_kt, st.max_kt)}</b></div>`
+    + `<div class="obs-row"><i>Obs</i>${sourceBadge(sourceName)}<span class="obs-dir">${windArrow(st.dir)}</span><b style="color:${windColor(st.speed_kt)}">${ktPair(st.speed_kt, st.max_kt)}</b></div>`
     + (m
       ? `<div class="obs-row model"><i>${escapeHtml(shortModel)}</i><span class="obs-dir">${windArrow(m.dir)}</span><b style="color:${windColor(m.speed_kt)}">${ktPair(m.speed_kt, m.gust_kt)}</b>`
         + `<em class="obs-delta ${deltaClass(delta)}" title="${escapeHtml(modelName)} minus observed${dirOff != null ? `; direction off by ${dirOff}°` : ''}">${signedKt(delta)}${dirOff != null && dirOff >= 30 ? ` <small>${dirOff}°</small>` : ''}</em></div>`
@@ -802,7 +814,7 @@ function stationPopupHtml(st) {
     ? `${signedKt(m.speed_kt - st.speed_kt)} kt${m.dir != null ? `, direction off by ${angleDiff(m.dir, st.dir)}°` : ''}`
     : '–';
   const source = st.source_url
-    ? `<a href="${escapeHtml(st.source_url)}" target="_blank" rel="noopener">${escapeHtml(st.source || 'Station source')}</a>`
+    ? `<a class="${st.source === 'IMGW-PIB' ? 'imgw-mini-logo' : ''}" href="${escapeHtml(st.source_url)}" target="_blank" rel="noopener">${escapeHtml(st.source || 'Station source')}</a>`
     : escapeHtml(st.source || OBS?.source || 'Station');
   const sourceNotice = st.source === 'IMGW-PIB'
     ? 'Source data originated from the Institute of Meteorology and Water Management – National Research Institute (IMGW-PIB) and have been processed.'
@@ -982,6 +994,7 @@ function fillSelected(name, i) {
   el('spotArrow').innerHTML = directionMarker(deg, speed);
   el('spotArrow').style.background = windColor(speed);
   el('spotArrow').classList.toggle('dir-good', directionOk(s, deg));
+  el('spotArrow').classList.toggle('dir-edge', directionEdge(s, deg));
   el('spotArrow').classList.toggle('dir-bad', !directionOk(s, deg));
   el('spotDirText').textContent = compassFrom(deg) + ' · ' + Math.round(deg) + '°';
   el('spotGust').textContent = gust + ' kt';
@@ -1115,6 +1128,8 @@ function renderMobileStations() {
     el('mobileStationList').innerHTML = `<p class="mobile-station-empty">${OBS ? 'No IMGW station near the spots is reporting wind at the moment.' : 'Loading…'}</p>`;
     return;
   }
+  const note = el('mobileStationNote');
+  if (note) note.hidden = Boolean(mobileStationOpenId);
   el('mobileStationList').innerHTML = list.map(st => {
     const m = st.model;
     const stale = obsAgeMin(st) > OBS_STALE_MIN;
@@ -1126,7 +1141,7 @@ function renderMobileStations() {
       + (m ? `, ${modelName} ${Math.round(m.speed_kt)} knots from ${m.dir}°, difference ${signedKt(delta)} knots` : `, no ${modelName} value`);
     const card = `<button class="mobile-station${stale ? ' stale' : ''}${open ? ' open' : ''}" type="button" data-station="${escapeHtml(st.id)}" aria-expanded="${open}" aria-label="${escapeHtml(aria)}">`
       + `<span class="mobile-station-head"><i class="obs-square" aria-hidden="true"></i><strong>${escapeHtml(st.name)}</strong><time>${stale ? `${obsAgeMin(st)} min ago` : obsClock(st.time)}</time></span>`
-      + `<span class="mobile-station-row"><i>Obs</i><span class="obs-source" title="${escapeHtml(sourceName)}">${escapeHtml(sourceName)}</span><span class="obs-dir">${windArrow(st.dir)}</span><b style="color:${windColor(st.speed_kt)}">${ktPair(st.speed_kt, st.max_kt)}</b><small>${st.dir}°</small></span>`
+      + `<span class="mobile-station-row"><i>Obs</i>${sourceBadge(sourceName)}<span class="obs-dir">${windArrow(st.dir)}</span><b style="color:${windColor(st.speed_kt)}">${ktPair(st.speed_kt, st.max_kt)}</b><small>${st.dir}°</small></span>`
       + (m
         ? `<span class="mobile-station-row"><i>${escapeHtml(shortModel)}</i><span class="obs-dir">${windArrow(m.dir)}</span><b style="color:${windColor(m.speed_kt)}">${ktPair(m.speed_kt, m.gust_kt)}</b><small>${m.dir != null ? m.dir + '°' : ''}</small>`
           + `<em class="obs-delta ${deltaClass(delta)}">${signedKt(delta)}${dirOff != null && dirOff >= 30 ? ` <small>${dirOff}°</small>` : ''}</em></span>`
@@ -1217,6 +1232,17 @@ function sectorPath(from, to, rOuter = 112, rInner = 78) {
   return `M ${o1x.toFixed(1)} ${o1y.toFixed(1)} A ${rOuter} ${rOuter} 0 ${large} 1 ${o2x.toFixed(1)} ${o2y.toFixed(1)} L ${i2x.toFixed(1)} ${i2y.toFixed(1)} A ${rInner} ${rInner} 0 ${large} 0 ${i1x.toFixed(1)} ${i1y.toFixed(1)} Z`;
 }
 
+function edgeTolerancePaths(ranges) {
+  if (!DIRECTION_EDGE_TOLERANCE_DEG) return '';
+  return ranges
+    .filter(([a, b]) => directionRangeWidth(a, b) + DIRECTION_EDGE_TOLERANCE_DEG * 2 < 359)
+    .flatMap(([a, b]) => [
+      `<path d="${sectorPath(a - DIRECTION_EDGE_TOLERANCE_DEG, a)}"/>`,
+      `<path d="${sectorPath(b, b + DIRECTION_EDGE_TOLERANCE_DEG)}"/>`
+    ])
+    .join('');
+}
+
 function renderDirectionRoseFromInputs() {
   const ranges = readDirectionInputs();
   if (ranges) renderDirectionRose(ranges);
@@ -1232,9 +1258,11 @@ function renderDirectionRose(ranges) {
     ticks += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" class="${major ? 'major' : ''}"/>`;
     labels += `<text x="${lx.toFixed(1)}" y="${(ly + 3).toFixed(1)}" class="${major ? 'major' : ''}">${d}</text>`;
   }
+  const edgeTolerance = edgeTolerancePaths(ranges);
   const sector = ranges.map(([a, b]) => `<path d="${sectorPath(a, b)}"/>`).join('');
   el('dirRose').innerHTML = `<svg viewBox="0 0 300 300" role="img" aria-label="Suitable wind direction rose">`
     + `<circle cx="150" cy="150" r="128" class="outer"/>`
+    + `<g class="edge-tolerance" aria-label="${DIRECTION_EDGE_TOLERANCE_DEG} degree edge tolerance">${edgeTolerance}</g>`
     + `<g class="sector">${sector}</g>`
     + `<g class="ticks">${ticks}</g><g class="labels">${labels}</g>`
     + `<text x="150" y="28" class="cardinal">N</text><text x="272" y="154" class="cardinal">E</text><text x="150" y="280" class="cardinal">S</text><text x="28" y="154" class="cardinal">W</text>`

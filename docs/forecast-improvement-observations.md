@@ -1,6 +1,6 @@
 # Improving the forecast with live observations
 
-Status: step 3 (showing observations) is built on branch `feat/imgw-station-observations`. Steps 1 and 2 are still proposals. Sources were checked on 29 September 2026.
+Status: live station display and observation history are built on branch `feat/imgw-station-observations`. Offline calibration and live correction remain proposals. Sources were checked on 29 September 2026.
 
 ## The problem
 
@@ -17,7 +17,7 @@ ICON-D2 (the 2.2 km model we use for today and tomorrow) sometimes gets south-ea
 
 | Source | Closest to | What it gives | Catch |
 | --- | --- | --- | --- |
-| IMGW telemetry API (`danepubliczne.imgw.pl/api/data/meteo`) | Rewa: Gdynia (~13 km). Kuźnica: Rozewie (~19 km) and Hel (~21 km) | Free JSON, no key. Wind speed, max wind and direction every 10 minutes. Also Gdańsk Port Północny and Świbno. | Only the latest reading. We have to poll it and keep our own history. |
+| IMGW telemetry API (`danepubliczne.imgw.pl/api/data/meteo`) | Ustka: Ustka (under 1 km). Other coastal spots use nearby IMGW stations such as Łeba, Rozewie, Gdynia, Hel, Gdańsk Port Północny and Świbno. | Free JSON, no key. Wind speed, max wind and direction at roughly 10-minute readings. | The feed exposes the latest values, so GoKite polls it and keeps its own history. |
 | IMGW synop API (`/api/data/synop`) | Hel, Gdańsk, Łeba, Elbląg | Hourly wind and pressure | Coarser in time |
 | Holfuy 1478, SurfPeople Chałupy 3 | Kuźnica (~5 km) | Wind station at a kite school. Its owner says readings are reliable for SW through SE. | Needs an API key from Holfuy or the station owner |
 | METAR, Gdańsk airport (EPGD) | – | Wind every 30 minutes | Inland and on higher ground, so a poor match for the bay |
@@ -42,7 +42,7 @@ If a model is always too strong or too weak in SE, we apply a simple correction 
 
 ### Step 2: Live correction for the next 1–3 hours
 
-1. Every 10 minutes, fetch the IMGW readings (and Holfuy, if we get a key) and store them. The server already fetches them (see step 3) but keeps only the latest reading in memory, so storing a history is the missing part.
+1. Every 10 minutes, fetch the IMGW readings (and Holfuy, if we get a key) and store them. GoKite now keeps this history in `.cache/observation-history.json` for 90 days by default.
 2. For each spot, compare each model with its reference stations over the last 2–3 hours. Kuźnica uses Hel, Rozewie and Chałupy. Rewa uses Gdynia and Gdańsk Port Północny.
 3. Give more weight to the model that has been closest lately. Blending by weight works better than switching to a single "winner", which would flip back and forth on noise.
 4. If the station shows 30% more wind than the models predicted, raise the next hour by about the same amount. Then fade the correction back to the normal forecast over 2–3 hours.
@@ -58,7 +58,7 @@ Instead of attaching a station to each spot, the app shows the stations on their
 - **Mobile.** A Stations button next to Map shows the same comparison as cards, with the timeline cut down to the current hour.
 - **When shown.** By default only at the current hour, because readings describe the present. The "Station check" setting switches between current hour, always and hidden.
 
-This already makes step 2's comparison visible, but only for the present moment. No history is kept, and nothing corrects the forecast yet.
+This makes the comparison visible for the present and provides recent same-day evidence. Nothing corrects the forecast automatically yet.
 
 ## Other signals worth using
 
@@ -76,5 +76,5 @@ These could flag "low-confidence SE hours" in the app even before we have any co
 
 1. ~~Show IMGW observations in the app (step 3).~~ Done: live station view, obs vs ICON-D2.
 2. Offline check of SE error on past data (step 1). This tells us whether a fixed correction is enough.
-3. Store the readings the server already fetches, so we build our own history.
+3. ~~Store the readings the server already fetches, so we build our own history.~~ Done: 90-day local history with matched ICON-D2 values.
 4. Live blending and correction (step 2), if step 1 shows the errors change from day to day rather than staying constant.
