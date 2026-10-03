@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>GoKite, Sułtani! — kite forecast</title>
-<link rel="stylesheet" href="/styles.attribution-header-v17-20260927.css?v=20261002-3" />
+<link rel="stylesheet" href="/styles.attribution-header-v17-20260927.css?v=20261003-1" />
 </head>
 <body>
 <div class="app">
@@ -77,16 +77,17 @@
           </div>
         </div>
         <div class="release-info">
-          <div class="release-version">GoKite <span id="appVersion">v1.1.0</span></div>
+          <div class="release-version">GoKite <span id="appVersion">v1.2.0</span></div>
           <button class="whats-new-toggle" id="whatsNewToggle" type="button" aria-controls="whatsNewPanel" aria-expanded="false">
             What’s new <span class="new-badge" id="whatsNewBadge" hidden>New</span>
           </button>
           <div class="whats-new-panel" id="whatsNewPanel" hidden>
             <b>Current release</b>
             <ul>
-              <li>Live IMGW-PIB station observations near spots are compared with the forecast.</li>
-              <li>Mobile map labels now follow the visible map area.</li>
-              <li>Mobile map view includes quick Spots and Stations controls.</li>
+              <li>Ustka and Rowy extend the Polish Baltic spot coverage to 16 locations.</li>
+              <li>IMGW-PIB station observations are paired with ICON-D2 and retained for recent evidence.</li>
+              <li>Station details show recent comparisons, a compact IMGW badge, and clearer direction warnings.</li>
+              <li>Mobile map labels follow the visible map area, with quick Spots and Stations controls.</li>
             </ul>
           </div>
         </div>
@@ -112,7 +113,7 @@
         <div class="mobile-spot-list" id="mobileSpotList" aria-label="Forecast by spot"></div>
         <div class="mobile-station-view" id="mobileStationView" hidden>
           <div class="mobile-station-list" id="mobileStationList" aria-label="Station observations compared with ICON-D2"></div>
-          <p class="mobile-station-note">Live station readings (raw, unverified) vs ICON-D2 at the same place and time. Stations are not necessarily at the spots: use them to judge the model and local conditions. Tap a station for details. Source: <a href="https://meteo.imgw.pl/" target="_blank" rel="noopener">IMGW-PIB</a>. Source data originated from the Institute of Meteorology and Water Management – National Research Institute (IMGW-PIB) and have been processed.</p>
+          <p class="mobile-station-note" id="mobileStationNote">Live station readings (raw, unverified) vs ICON-D2 at the same place and time. Stations are not necessarily at the spots: use them to judge the model and local conditions. Tap a station for details. Source: <a href="https://meteo.imgw.pl/" target="_blank" rel="noopener">IMGW-PIB</a>. Source data originated from the Institute of Meteorology and Water Management – National Research Institute (IMGW-PIB) and have been processed.</p>
         </div>
       </div>
     </section>
@@ -210,6 +211,6 @@
     <div class="days" id="days" aria-label="Forecast timeline" tabindex="0"></div>
   </footer>
 </div>
-<script src="/app.attribution-header-v17-20260927.js?v=20261002-3"></script>
+<script src="/app.attribution-header-v17-20260927.js?v=20261003-6"></script>
 </body>
 </html>

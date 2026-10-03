@@ -1,4 +1,4 @@
-// The 14 Polish Baltic kite spots - single source of truth.
+// The 16 Polish Baltic kite spots - single source of truth.
 // lat/lon drive the Open-Meteo request.
 // dx: display-only side hint for the front-end label placer - its SIGN picks the
 //     preferred side (dx<0 = prefer west, e.g. spots near the right edge). The
@@ -15,6 +15,8 @@
 const maritime = 'https://www.umgdy.gov.pl/bezpieczenstwo-morskie/ruch-statkow/hydro-meteo/';
 
 module.exports = [
+  { name: 'Ustka',           lat: 54.588500, lon: 16.842000, dx:  12, dy: -40, place: 'W', wg: 'https://www.windguru.cz/250015', goodFrom: [[259, 73]] },
+  { name: 'Rowy',            lat: 54.670000, lon: 17.050000, dx:  12, dy:  12, place: 'W', wg: 'https://www.windguru.cz/48014', goodFrom: [[259, 73]] },
   { name: 'Łeba',           lat: 54.766774, lon: 17.543355, dx:  12, dy: -40, place: 'W', wg: 'https://www.windguru.cz/3159', goodFrom: [[259, 73]], externalLinks: [
     { type: 'camera', label: 'Fly Resort', location: 'Łeba west beach', url: 'https://flyresort.pl/leba/', proximity: 'direct' },
     { type: 'camera', label: 'WebCamera.pl', location: 'Łeba east beach', url: 'https://leba.webcamera.pl/', proximity: 'direct' }
