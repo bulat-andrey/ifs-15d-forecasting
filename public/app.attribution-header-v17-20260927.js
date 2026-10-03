@@ -82,7 +82,7 @@ const modelLabel = id => {
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 
 const el = id => document.getElementById(id);
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.3.0';
 const APP_VERSION_KEY = 'gokite.seenVersion';
 const THRESHOLD_KEY = 'sultansradar.thresholdKt';
 const MARKER_STYLE_KEY = 'sultansradar.markerStyle';
