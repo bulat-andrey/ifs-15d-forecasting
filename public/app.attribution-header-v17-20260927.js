@@ -88,6 +88,15 @@ const THRESHOLD_KEY = 'sultansradar.thresholdKt';
 const MARKER_STYLE_KEY = 'sultansradar.markerStyle';
 const DIR_OVERRIDES_KEY = 'sultansradar.directionSectors';
 const DIR_INVERT_KEY = 'sultansradar.directionRoseInvert';
+const FAVORITES_KEY = 'gokite.favoriteSpots';
+const WATER_ICONS = {
+  wave: { icon: '🌊', label: 'Wave / open sea' },
+  flat: { icon: '🪞', label: 'Flat water' },
+  flatChop: { icon: '🪞〰️', label: 'Flat and choppy water' },
+  both: { icon: '🌊🪞', label: 'Wave and flat-water options' },
+  bothFlatWave: { icon: '🪞🌊', label: 'Flat-water and wave options' },
+  chop: { icon: '〰️', label: 'Choppy water' }
+};
 let S = null;        // forecast payload
 let times = [];      // master hourly time array (ISO local, "YYYY-MM-DDTHH:MM")
 let t0 = 0;          // epoch of times[0], parsed as UTC for consistent indexing
@@ -101,6 +110,7 @@ let threshold = 12;
 let markerStyle = 'barbs';
 let dirOverrides = {};
 let dirRoseInvert = true;
+let favoriteNames = new Set();
 let dirDrag = null;
 let mobileMapOpen = false;
 let mobileStationsOpen = false;   // mobile "Stations" view (obs vs ICON-D2)
@@ -204,6 +214,7 @@ async function boot() {
     el('modelBtn').title = 'Seamless blend — best model per lead time: ' + S.blend.join(' → ');
   }
   setupUserSettings();
+  setupFavoriteSettings();
   setupWhatsNew();
   setupThresholdControl();
   setupMarkerStyleControl();
@@ -353,6 +364,56 @@ function setupUserSettings() {
   });
 }
 
+function loadFavoriteNames() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]');
+    return new Set(Array.isArray(saved) ? saved.filter(name => S.spots.some(s => s.name === name)) : []);
+  } catch { return new Set(); }
+}
+
+const isFavorite = name => favoriteNames.has(name);
+const activeSpots = () => {
+  const selected = S.spots.filter(s => favoriteNames.has(s.name));
+  return selected.length ? selected : S.spots;
+};
+
+function refreshFavoriteViews() {
+  buildTimeline();
+  update(curIdx);
+  drawMarkers(curIdx);
+}
+
+function renderFavoriteSettings() {
+  const list = el('favoriteSpotList');
+  if (!list) return;
+  list.innerHTML = S.spots.map(s => {
+    const water = WATER_ICONS[s.water];
+    const icon = water ? `<i class="water-icon" title="${water.label}" aria-label="${water.label}">${water.icon}</i>` : '';
+    return `<label class="favorite-spot-option"><input type="checkbox" value="${escapeHtml(s.name)}"${isFavorite(s.name) ? ' checked' : ''}><span>${escapeHtml(s.name)}</span>${icon}</label>`;
+  }).join('');
+  list.querySelectorAll('input').forEach(input => {
+    input.onchange = () => {
+      if (input.checked) favoriteNames.add(input.value);
+      else favoriteNames.delete(input.value);
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify([...favoriteNames]));
+      refreshFavoriteViews();
+    };
+  });
+}
+
+function setupFavoriteSettings() {
+  favoriteNames = loadFavoriteNames();
+  renderFavoriteSettings();
+  el('favoriteSpotsClear').onclick = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    favoriteNames.clear();
+    localStorage.removeItem(FAVORITES_KEY);
+    renderFavoriteSettings();
+    refreshFavoriteViews();
+  };
+}
+
 function setupWhatsNew() {
   const version = el('appVersion');
   const toggle = el('whatsNewToggle');
@@ -430,7 +491,7 @@ function fitAllSpots() {
 
 const windAt = (spot, i) => spot.hourly ? (spot.hourly.wind_speed_10m[i] ?? 0) : 0;
 const usableWindAt = (spot, i) => directionOk(spot, spot.hourly.wind_direction_10m[i]) ? windAt(spot, i) : 0;
-const maxUsableWindAt = i => S.spots.reduce((m, s) => Math.max(m, usableWindAt(s, i)), 0);
+const maxUsableWindAt = i => activeSpots().reduce((m, s) => Math.max(m, usableWindAt(s, i)), 0);
 
 function nowIndex() {
   // current Warsaw wall-clock, matched against the local ISO time grid
@@ -530,7 +591,8 @@ function drawMarkers(i) {
     const speed = r(windAt(s, i), 1), gust = r(s.hourly.wind_gusts_10m[i]);
     const windLabel = `${speed} (${gust}) kt`;
     const pt = map.latLngToContainerPoint([s.lat, s.lon]);
-    return { i: idx, s, speed, windLabel, w: labelWidth(s.name, windLabel), cx: pt.x, cy: pt.y, visible: view.contains([s.lat, s.lon]), prefersLeft: s.dx < 0, place: s.place, nudge: s.nudge };
+    const favorite = isFavorite(s.name);
+    return { i: idx, s, speed, windLabel, w: labelWidth(s.name + (favorite ? ' ★' : ''), windLabel), favorite, cx: pt.x, cy: pt.y, visible: view.contains([s.lat, s.lon]), prefersLeft: s.dx < 0, place: s.place, nudge: s.nudge };
   });
   const visibleEntries = entries.filter(e => e.visible);
   const stationPts = stationsVisible(i) ? stationPoints() : [];
@@ -544,11 +606,12 @@ function drawMarkers(i) {
     const dirClass = edge ? ' dir-edge' : suitable ? ' dir-good' : ' dir-bad';
     const discColor = edge ? '#f2bc35' : suitable ? windColor(e.speed) : WIND_COLORS[0];
     const active = s.name === selName ? ' active' : '';
+    const favorite = e.favorite ? ' favorite' : '';
     const pos = place[e.i];
     const label = e.visible && pos
-      ? `<div class="plabel" style="left:${pos.dx}px;top:${pos.dy}px;width:${e.w}px"><span>${s.name}</span><b style="margin-left:auto;color:${windColor(e.speed)}">${e.windLabel}</b></div>`
+      ? `<div class="plabel" style="left:${pos.dx}px;top:${pos.dy}px;width:${e.w}px"><span>${e.favorite ? '<i class="favorite-star" aria-label="Favorite spot">★</i>' : ''}${escapeHtml(s.name)}</span><b style="margin-left:auto;color:${windColor(e.speed)}">${e.windLabel}</b></div>`
       : '';
-    const html = `<div class="pin${active}">`
+    const html = `<div class="pin${active}${favorite}">`
       + `<div class="disc${dirClass}" style="background:${discColor}" title="${suitable ? 'Suitable direction' : 'Unsuitable direction'}"><span>${directionMarker(deg, e.speed)}</span></div>`
       + label + `</div>`;
     markerObjs[e.i].m.setIcon(L.divIcon({ className: '', html, iconSize: [0, 0], iconAnchor: [0, 0] }));
@@ -986,7 +1049,7 @@ function fillSelected(name, i) {
   if (!s) return;
   const windKt = windAt(s, i), speed = r(windKt, 1), statusSpeed = windKt, gust = r(s.hourly.wind_gusts_10m[i]), deg = s.hourly.wind_direction_10m[i];
   const temp = r(s.hourly.temperature_2m[i]), precip = r(s.hourly.precipitation[i], 1);
-  el('gpName').textContent = s.name;
+  el('gpName').innerHTML = `${isFavorite(s.name) ? '<span class="favorite-star" aria-label="Favorite spot">★</span>' : ''}${escapeHtml(s.name)}`;
   el('spotName').textContent = s.name;
   el('spotDirRange').textContent = `Suitable FROM ${directionRangeText(s)}`;
   el('spotDirRange').title = `Accepts ${DIRECTION_EDGE_TOLERANCE_DEG}° near edges. Same sector shown as wind blowing TO: ${directionToRangeText(s)}`;
@@ -1020,7 +1083,7 @@ function fillSelected(name, i) {
 
 function mobileTimeSlotHtml(i) {
   const strongest = maxUsableWindAt(i);
-  const greenSpots = S.spots.filter(s => {
+  const greenSpots = activeSpots().filter(s => {
     const speed = windAt(s, i), deg = s.hourly.wind_direction_10m[i];
     return speed >= threshold && isDaylight(i) && directionOk(s, deg);
   });
@@ -1062,7 +1125,7 @@ function renderMobileOverview() {
     button.onclick = () => update(Number(button.dataset.timeIdx), true);
   });
   el('mobileTimeList').querySelector('.mobile-time-slot.active')?.scrollIntoView({ block: 'nearest', inline: 'center' });
-  el('mobileSpotList').innerHTML = S.spots.map(s => {
+  el('mobileSpotList').innerHTML = activeSpots().map(s => {
     const windKt = windAt(s, curIdx), speed = r(windKt, 1), statusSpeed = windKt;
     const gust = r(s.hourly.wind_gusts_10m[curIdx]);
     const deg = s.hourly.wind_direction_10m[curIdx];
@@ -1071,8 +1134,8 @@ function renderMobileOverview() {
     const suitable = directionOk(s, deg);
     const usable = statusSpeed >= threshold && isDaylight(curIdx) && suitable;
     const aria = usable ? 'Kiteable' : statusSpeed < threshold ? `Below ${threshold} knots` : suitable ? 'Limited' : 'Unsuitable direction';
-    return `<button class="mobile-spot ${usable ? 'is-kiteable' : ''}" type="button" data-spot="${s.name}" aria-label="${s.name}: ${aria}">`
-      + `<span class="mobile-spot-main"><strong>${s.name}</strong></span>`
+    return `<button class="mobile-spot ${usable ? 'is-kiteable' : ''}${isFavorite(s.name) ? ' is-favorite' : ''}" type="button" data-spot="${escapeHtml(s.name)}" aria-label="${escapeHtml(s.name)}: ${aria}">`
+      + `<span class="mobile-spot-main"><strong>${isFavorite(s.name) ? '<i class="favorite-star" aria-hidden="true">★</i>' : ''}${escapeHtml(s.name)}</strong></span>`
       + `<span class="mobile-spot-dir ${suitable ? 'dir-good' : 'dir-bad'}">${directionMarker(deg, speed)}<small>${Math.round(deg)}°</small></span>`
       + `<span class="mobile-spot-values"><b>${speed} (${gust}) kt</b><span>${temp}°</span>${precip > 0 ? `<span class="mobile-spot-precip">${r(precip, 1)} mm</span>` : ''}</span>`
       + `</button>`;
@@ -1588,7 +1651,7 @@ function renderSpotTable(name) {
       + row('Rain mm', precipCells, 'precip-row')
       + `</table>`);
   }
-  el('gpName').textContent = s.name;
+  el('gpName').innerHTML = `${isFavorite(s.name) ? '<span class="favorite-star" aria-label="Favorite spot">★</span>' : ''}${escapeHtml(s.name)}`;
   const twilightNote = nDawn || nDusk ? '<span style="opacity:.7">+1h dawn/dusk</span>' : '';
   el('gpSub').innerHTML = `${modelLegend}${twilightNote}`;
   el('spotTable').innerHTML = blockHtml.map(html => `<div class="spot-table-block">${html}</div>`).join('');

@@ -26,3 +26,7 @@ versioned production release, after the PR is merged and production health is
 verified. Do not tag ordinary feature branches or unmerged PRs. Release tags
 must use the `vMAJOR.MINOR.PATCH` format and point to the deployed `master`
 commit.
+
+Before pushing a feature branch, update the README's **What's new** section for
+any user-visible changes, keep the in-app release notes aligned with it, and run
+the required syntax and whitespace checks from [docs/development.md](docs/development.md).

@@ -175,7 +175,7 @@ function buildBlend() {
     }
 
     return {
-      name: s.name, lat: s.lat, lon: s.lon, dx: s.dx, dy: s.dy, place: s.place, nudge: s.nudge, wg: s.wg,
+      name: s.name, lat: s.lat, lon: s.lon, dx: s.dx, dy: s.dy, place: s.place, nudge: s.nudge, wg: s.wg, water: s.water,
       goodFrom: s.goodFrom, externalLinks: s.externalLinks || [],
       grid_lat: baseSpot.latitude, grid_lon: baseSpot.longitude, elevation: baseSpot.elevation,
       hourly: out, daily
